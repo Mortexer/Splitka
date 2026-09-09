@@ -1,122 +1,492 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'domain/models.dart';
+import 'domain/receipts.dart';
+import 'domain/settlements.dart';
+import 'importers/biedronka_parser.dart';
+import 'state/household_controller.dart';
+import 'ui/common_widgets.dart';
+import 'ui/dashboard_screen.dart';
+import 'ui/receipt_detail_screen.dart';
+
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const SplitkaApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SplitkaApp extends StatefulWidget {
+  const SplitkaApp({super.key, HouseholdController? controller})
+    : _injectedController = controller;
 
-  // This widget is the root of your application.
+  final HouseholdController? _injectedController;
+
+  @override
+  State<SplitkaApp> createState() => _SplitkaAppState();
+}
+
+class _SplitkaAppState extends State<SplitkaApp> {
+  late final HouseholdController _controller;
+  String? _openReceiptId;
+  bool _importing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget._injectedController ?? HouseholdController();
+    unawaited(_controller.boot());
+  }
+
+  @override
+  void dispose() {
+    if (widget._injectedController == null) {
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+      title: 'Splitka',
+      debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
+      home: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          if (!_controller.loaded) {
+            return const _LoadingScreen();
+          }
+
+          final openReceipt = _findReceipt(_openReceiptId);
+
+          if (_openReceiptId != null && openReceipt == null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() => _openReceiptId = null);
+              }
+            });
+          }
+
+          if (openReceipt != null) {
+            return ReceiptDetailScreen(
+              household: _controller.household,
+              receipt: openReceipt,
+              onBack: () => setState(() => _openReceiptId = null),
+              onSetPayer: (payerId) => unawaited(
+                _updateReceipt(
+                  openReceipt.id,
+                  (receipt) => receipt.copyWith(payerId: payerId),
+                ),
+              ),
+              onAssignAllProducts: () =>
+                  unawaited(_assignAllProducts(openReceipt.id)),
+              onClearProductAssignments: () =>
+                  unawaited(_clearProductAssignments(openReceipt.id)),
+              onSetItemParticipants: (itemId, participantIds) => unawaited(
+                _setItemParticipants(openReceipt.id, itemId, participantIds),
+              ),
+              onToggleItemParticipant: (itemId, personId) => unawaited(
+                _toggleItemParticipant(openReceipt.id, itemId, personId),
+              ),
+              onToggleItemSkipped: (itemId) =>
+                  unawaited(_toggleItemSkipped(openReceipt.id, itemId)),
+              onAddItem: (input, participantIds) =>
+                  unawaited(_addItem(openReceipt.id, input, participantIds)),
+              onUpdateItem: (itemId, update) => unawaited(
+                _updateReceipt(
+                  openReceipt.id,
+                  (receipt) => updateReceiptItem(receipt, itemId, update),
+                ),
+              ),
+              onDeleteItem: (itemId) =>
+                  unawaited(_deleteItem(openReceipt.id, itemId)),
+              onDeleteReceipt: () => unawaited(_deleteReceipt(openReceipt.id)),
+            );
+          }
+
+          return DashboardScreen(
+            controller: _controller,
+            importing: _importing,
+            onImport: () => unawaited(_importBiedronkaJson()),
+            onAddManualReceipt: (input) => unawaited(_addManualReceipt(input)),
+            onClearAll: () => unawaited(_clearAllReceipts()),
+            onOpenReceipt: (receiptId) =>
+                setState(() => _openReceiptId = receiptId),
+          );
+        },
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  Receipt? _findReceipt(String? receiptId) {
+    if (receiptId == null) {
+      return null;
+    }
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+    for (final receipt in _controller.household.receipts) {
+      if (receipt.id == receiptId) {
+        return receipt;
+      }
+    }
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+    return null;
   }
+
+  Future<void> _importBiedronkaJson() async {
+    if (_importing) {
+      return;
+    }
+
+    setState(() => _importing = true);
+
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['json', 'txt'],
+      );
+
+      if (file == null) {
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+
+      final imported = parseBiedronkaReceipt(
+        utf8.decode(bytes),
+        _controller.household.members,
+      );
+
+      await _controller.commit(
+        (household) => household.copyWith(
+          receipts: [imported.receipt, ...household.receipts],
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _openReceiptId = imported.receipt.id);
+
+      final warning = imported.warnings.isEmpty
+          ? null
+          : imported.warnings.first;
+      _showSnack(
+        warning == null
+            ? 'Paragon zaimportowany.'
+            : 'Paragon zaimportowany. $warning',
+      );
+    } catch (error) {
+      if (mounted) {
+        _showSnack('Import nie wyszedl: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _importing = false);
+      }
+    }
+  }
+
+  Future<void> _addManualReceipt(ManualReceiptInput input) async {
+    final receipt = createManualReceipt(_controller.household.members, input);
+
+    await _controller.commit(
+      (household) =>
+          household.copyWith(receipts: [receipt, ...household.receipts]),
+    );
+
+    if (mounted) {
+      setState(() => _openReceiptId = receipt.id);
+    }
+  }
+
+  Future<void> _clearAllReceipts() async {
+    if (_controller.household.receipts.isEmpty) {
+      return;
+    }
+
+    final confirmed = await _confirm(
+      title: 'Wyczyscic rachunki?',
+      message: 'Usunie to wszystkie paragony w tym pokoju.',
+      confirmLabel: 'Wyczysc',
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await _controller.commit(
+      (household) => household.copyWith(receipts: const []),
+    );
+
+    if (mounted) {
+      setState(() => _openReceiptId = null);
+      _showSnack('Rachunki wyczyszczone.');
+    }
+  }
+
+  Future<void> _deleteReceipt(String receiptId) async {
+    final receipt = _findReceipt(receiptId);
+    if (receipt == null) {
+      return;
+    }
+
+    final confirmed = await _confirm(
+      title: 'Usunac paragon?',
+      message: receipt.storeName,
+      confirmLabel: 'Usun',
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await _controller.commit(
+      (household) => household.copyWith(
+        receipts: household.receipts
+            .where((item) => item.id != receiptId)
+            .toList(),
+      ),
+    );
+
+    if (mounted) {
+      setState(() => _openReceiptId = null);
+      _showSnack('Paragon usuniety.');
+    }
+  }
+
+  Future<void> _updateReceipt(
+    String receiptId,
+    Receipt Function(Receipt receipt) updater,
+  ) async {
+    await _controller.commit(
+      (household) => household.copyWith(
+        receipts: household.receipts.map((receipt) {
+          return receipt.id == receiptId ? updater(receipt) : receipt;
+        }).toList(),
+      ),
+    );
+  }
+
+  Future<void> _assignAllProducts(String receiptId) async {
+    final allMemberIds = _controller.household.members
+        .map((person) => person.id)
+        .toList();
+
+    await _updateReceipt(
+      receiptId,
+      (receipt) => receipt.copyWith(
+        assignments: {
+          ...receipt.assignments,
+          for (final item in receipt.items.where(
+            (item) => item.kind == ReceiptItemKind.product,
+          ))
+            item.id: createAssignment(item.id, allMemberIds),
+        },
+      ),
+    );
+  }
+
+  Future<void> _clearProductAssignments(String receiptId) async {
+    await _updateReceipt(
+      receiptId,
+      (receipt) => receipt.copyWith(
+        assignments: {
+          ...receipt.assignments,
+          for (final item in receipt.items.where(
+            (item) => item.kind == ReceiptItemKind.product,
+          ))
+            item.id: createAssignment(item.id),
+        },
+      ),
+    );
+  }
+
+  Future<void> _setItemParticipants(
+    String receiptId,
+    String itemId,
+    List<String> participantIds,
+  ) async {
+    await _updateReceipt(
+      receiptId,
+      (receipt) => updateReceiptAssignment(
+        receipt,
+        itemId,
+        (assignment) => assignment.copyWith(
+          participantIds: _normalizeParticipants(participantIds),
+          skipped: false,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleItemParticipant(
+    String receiptId,
+    String itemId,
+    String personId,
+  ) async {
+    await _updateReceipt(
+      receiptId,
+      (receipt) => updateReceiptAssignment(receipt, itemId, (assignment) {
+        final selected = assignment.participantIds.toSet();
+
+        if (selected.contains(personId)) {
+          selected.remove(personId);
+        } else {
+          selected.add(personId);
+        }
+
+        return assignment.copyWith(
+          participantIds: _normalizeParticipants(selected.toList()),
+          skipped: false,
+        );
+      }),
+    );
+  }
+
+  Future<void> _toggleItemSkipped(String receiptId, String itemId) async {
+    final memberIds = _controller.household.members
+        .map((person) => person.id)
+        .toList();
+
+    await _updateReceipt(
+      receiptId,
+      (receipt) => updateReceiptAssignment(receipt, itemId, (assignment) {
+        final item = receipt.items
+            .where((receiptItem) => receiptItem.id == itemId)
+            .firstOrNull;
+        final shouldRestoreAll =
+            item?.kind == ReceiptItemKind.depositReturn &&
+            assignment.participantIds.isEmpty;
+
+        return assignment.copyWith(
+          participantIds: shouldRestoreAll
+              ? memberIds
+              : assignment.participantIds,
+          skipped: !assignment.skipped,
+        );
+      }),
+    );
+  }
+
+  Future<void> _addItem(
+    String receiptId,
+    ManualProductItemInput input,
+    List<String> participantIds,
+  ) async {
+    final item = createManualProductItem(input);
+    final assignment = createAssignment(
+      item.id,
+      _normalizeParticipants(participantIds),
+    );
+
+    await _updateReceipt(
+      receiptId,
+      (receipt) => addReceiptItem(receipt, item, assignment),
+    );
+  }
+
+  Future<void> _deleteItem(String receiptId, String itemId) async {
+    await _updateReceipt(
+      receiptId,
+      (receipt) => removeReceiptItem(receipt, itemId),
+    );
+  }
+
+  List<String> _normalizeParticipants(List<String> participantIds) {
+    final selected = participantIds.toSet();
+    return _controller.household.members
+        .where((person) => selected.contains(person.id))
+        .map((person) => person.id)
+        .toList();
+  }
+
+  Future<bool?> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.card,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Anuluj'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.cardAlt,
+        ),
+      );
+  }
+}
+
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen();
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+    return const Scaffold(
+      body: SafeArea(
+        child: PageFrame(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppColors.primary),
+                SizedBox(height: 14),
+                Text(
+                  'Ladowanie Splitki...',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
     );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }
