@@ -46,7 +46,11 @@ void main() {
             assignments: {
               'bread': createAssignment('bread', ['danus', 'kubus', 'damian']),
               'snack': createAssignment('snack'),
-              'return': createAssignment('return', ['danus', 'kubus', 'damian']),
+              'return': createAssignment('return', [
+                'danus',
+                'kubus',
+                'damian',
+              ]),
             },
           ),
         ],
@@ -56,9 +60,18 @@ void main() {
 
       expect(settlement.includedCents, 600);
       expect(settlement.unassignedCount, 1);
-      expect(settlement.transfers.map((transfer) => transfer.amountCents), [200, 200]);
-      expect(settlement.transfers.map((transfer) => transfer.fromPersonId), ['kubus', 'damian']);
-      expect(settlement.transfers.map((transfer) => transfer.toPersonId), ['danus', 'danus']);
+      expect(settlement.transfers.map((transfer) => transfer.amountCents), [
+        200,
+        200,
+      ]);
+      expect(settlement.transfers.map((transfer) => transfer.fromPersonId), [
+        'kubus',
+        'damian',
+      ]);
+      expect(settlement.transfers.map((transfer) => transfer.toPersonId), [
+        'danus',
+        'danus',
+      ]);
     });
   });
 }

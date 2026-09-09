@@ -3,10 +3,7 @@ import 'dart:convert';
 import '../domain/models.dart';
 
 class ImportResult {
-  const ImportResult({
-    required this.receipt,
-    required this.warnings,
-  });
+  const ImportResult({required this.receipt, required this.warnings});
 
   final Receipt receipt;
   final List<String> warnings;
@@ -23,8 +20,14 @@ ImportResult parseBiedronkaReceipt(String rawJson, List<Person> members) {
   return _buildReceiptFromPrintedBody(root, members);
 }
 
-ImportResult _buildReceiptFromSignedParagon(Map<String, dynamic> paragon, List<Person> members) {
-  final positions = _ensureList(paragon['pozycja'], 'Brak pozycji paragonu w payloadzie.');
+ImportResult _buildReceiptFromSignedParagon(
+  Map<String, dynamic> paragon,
+  List<Person> members,
+) {
+  final positions = _ensureList(
+    paragon['pozycja'],
+    'Brak pozycji paragonu w payloadzie.',
+  );
   final receiptNumber = _optionalString(paragon['nrParag']);
   final boughtAt = _optionalString(paragon['zakSprzed']);
   final memberIds = members.map((person) => person.id).toList();
@@ -49,7 +52,9 @@ ImportResult _buildReceiptFromSignedParagon(Map<String, dynamic> paragon, List<P
     items.add(
       ReceiptItem(
         id: 'item-${index + 1}',
-        name: _cleanProductName(_optionalString(goods['nazwa']) ?? 'Pozycja ${index + 1}'),
+        name: _cleanProductName(
+          _optionalString(goods['nazwa']) ?? 'Pozycja ${index + 1}',
+        ),
         quantity: _optionalString(goods['ilosc']) ?? '1',
         totalCents: totalCents,
         unitPriceCents: _optionalInt(goods['cena']),
@@ -106,8 +111,14 @@ ImportResult _buildReceiptFromSignedParagon(Map<String, dynamic> paragon, List<P
   );
 }
 
-ImportResult _buildReceiptFromPrintedBody(Map<String, dynamic> root, List<Person> members) {
-  final body = _ensureList(root['body'], 'Ten JSON nie wygląda jak paragon Biedronki.');
+ImportResult _buildReceiptFromPrintedBody(
+  Map<String, dynamic> root,
+  List<Person> members,
+) {
+  final body = _ensureList(
+    root['body'],
+    'Ten JSON nie wygląda jak paragon Biedronki.',
+  );
   final memberIds = members.map((person) => person.id).toList();
   final warnings = ['Użyto awaryjnego importu z widoku paragonu.'];
   final items = <ReceiptItem>[];
@@ -132,7 +143,10 @@ ImportResult _buildReceiptFromPrintedBody(Map<String, dynamic> root, List<Person
         items.add(
           ReceiptItem(
             id: 'item-${items.length + 1}',
-            name: _cleanProductName(_optionalString(sellLine['name']) ?? 'Pozycja ${items.length + 1}'),
+            name: _cleanProductName(
+              _optionalString(sellLine['name']) ??
+                  'Pozycja ${items.length + 1}',
+            ),
             quantity: _optionalString(sellLine['quantity']) ?? '1',
             totalCents: totalCents,
             unitPriceCents: _optionalInt(sellLine['price']),
@@ -146,14 +160,17 @@ ImportResult _buildReceiptFromPrintedBody(Map<String, dynamic> root, List<Person
     if (discountLine != null && pendingItemIndex != null) {
       final discountValue = (_optionalInt(discountLine['value']) ?? 0).abs();
       final item = items[pendingItemIndex];
-      items[pendingItemIndex] = item.copyWith(totalCents: item.totalCents - discountValue);
+      items[pendingItemIndex] = item.copyWith(
+        totalCents: item.totalCents - discountValue,
+      );
     }
 
     if (pack != null) {
       depositCents += _optionalInt(pack['total']) ?? 0;
     }
 
-    if (payment != null && _lower(_optionalString(payment['name'])).contains('zwrot opak')) {
+    if (payment != null &&
+        _lower(_optionalString(payment['name'])).contains('zwrot opak')) {
       depositReturnCents += _optionalInt(payment['amount']) ?? 0;
     }
   }
@@ -306,7 +323,10 @@ int? _optionalInt(Object? value) {
 }
 
 String _cleanProductName(String name) {
-  return name.replaceAll(RegExp(r'\s+'), ' ').replaceAll(RegExp(r'\s+[A-G]$'), '').trim();
+  return name
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll(RegExp(r'\s+[A-G]$'), '')
+      .trim();
 }
 
 String _makeReceiptId(String? receiptNumber) {
@@ -320,7 +340,9 @@ String _buildReceiptTitle(String? receiptNumber, String? boughtAt) {
       ? 'import'
       : '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}';
 
-  return receiptNumber == null ? 'Biedronka · $formattedDate' : 'Biedronka #$receiptNumber · $formattedDate';
+  return receiptNumber == null
+      ? 'Biedronka · $formattedDate'
+      : 'Biedronka #$receiptNumber · $formattedDate';
 }
 
 String _lower(String? value) {

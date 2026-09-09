@@ -50,23 +50,28 @@ class FirebaseStore {
         .doc(roomCode)
         .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
-      if (!snapshot.exists) {
-        return null;
-      }
+          if (!snapshot.exists) {
+            return null;
+          }
 
-      final data = snapshot.data();
-      final householdData = data?['household'];
+          final data = snapshot.data();
+          final householdData = data?['household'];
 
-      if (householdData is! Map) {
-        throw const FormatException('Nieprawidłowe dane pokoju w Firestore.');
-      }
+          if (householdData is! Map) {
+            throw const FormatException(
+              'Nieprawidłowe dane pokoju w Firestore.',
+            );
+          }
 
-      return RemoteHouseholdChange(
-        household: Household.fromJson(Map<String, dynamic>.from(householdData), fallbackId: roomCode),
-        fromCache: snapshot.metadata.isFromCache,
-        hasPendingWrites: snapshot.metadata.hasPendingWrites,
-      );
-    });
+          return RemoteHouseholdChange(
+            household: Household.fromJson(
+              Map<String, dynamic>.from(householdData),
+              fallbackId: roomCode,
+            ),
+            fromCache: snapshot.metadata.isFromCache,
+            hasPendingWrites: snapshot.metadata.hasPendingWrites,
+          );
+        });
   }
 
   Future<void> saveHousehold(Household household, String clientId) async {

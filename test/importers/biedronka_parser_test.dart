@@ -42,7 +42,8 @@ void main() {
           },
         },
       };
-      final token = 'header.${base64Url.encode(utf8.encode(jsonEncode(payload))).replaceAll('=', '')}.signature';
+      final token =
+          'header.${base64Url.encode(utf8.encode(jsonEncode(payload))).replaceAll('=', '')}.signature';
       final raw = jsonEncode({'data': token});
 
       final result = parseBiedronkaReceipt(raw, defaultMembers);
@@ -57,9 +58,17 @@ void main() {
         'MakaronPennePa500g',
         'Zwrot opakowań',
       ]);
-      expect(result.receipt.items.map((item) => item.totalCents), [1598, 100, -4800]);
+      expect(result.receipt.items.map((item) => item.totalCents), [
+        1598,
+        100,
+        -4800,
+      ]);
       expect(result.receipt.assignments['item-1']?.participantIds, isEmpty);
-      expect(result.receipt.assignments['deposit-return']?.participantIds, ['danus', 'kubus', 'damian']);
+      expect(result.receipt.assignments['deposit-return']?.participantIds, [
+        'danus',
+        'kubus',
+        'damian',
+      ]);
     });
   });
 }

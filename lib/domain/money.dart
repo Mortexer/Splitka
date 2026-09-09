@@ -17,7 +17,10 @@ String formatMoneyInput(int cents) {
 }
 
 int? parseMoneyInput(String value) {
-  final normalized = value.trim().replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+  final normalized = value
+      .trim()
+      .replaceAll(RegExp(r'\s+'), '')
+      .replaceAll(',', '.');
 
   if (!RegExp(r'^-?\d+(\.\d{1,2})?$').hasMatch(normalized)) {
     return null;

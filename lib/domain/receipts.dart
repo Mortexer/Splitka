@@ -3,11 +3,7 @@ import 'dart:math';
 import 'models.dart';
 
 class ManualReceiptInput {
-  const ManualReceiptInput({
-    required this.title,
-    this.payerId,
-    this.now,
-  });
+  const ManualReceiptInput({required this.title, this.payerId, this.now});
 
   final String title;
   final String? payerId;
@@ -42,7 +38,9 @@ class ProductItemUpdate {
 
 Receipt createManualReceipt(List<Person> members, ManualReceiptInput input) {
   final now = input.now ?? DateTime.now();
-  final title = input.title.trim().isEmpty ? 'Rachunek ręczny' : input.title.trim();
+  final title = input.title.trim().isEmpty
+      ? 'Rachunek ręczny'
+      : input.title.trim();
 
   return Receipt(
     id: 'manual-${now.millisecondsSinceEpoch}-${_randomSuffix()}',
@@ -62,9 +60,13 @@ Receipt createManualReceipt(List<Person> members, ManualReceiptInput input) {
 
 ReceiptItem createManualProductItem(ManualProductItemInput input) {
   return ReceiptItem(
-    id: input.id ?? 'manual-item-${DateTime.now().millisecondsSinceEpoch}-${_randomSuffix()}',
+    id:
+        input.id ??
+        'manual-item-${DateTime.now().millisecondsSinceEpoch}-${_randomSuffix()}',
     name: input.name.trim().isEmpty ? 'Pozycja' : input.name.trim(),
-    quantity: input.quantity?.trim().isEmpty ?? true ? '1' : input.quantity!.trim(),
+    quantity: input.quantity?.trim().isEmpty ?? true
+        ? '1'
+        : input.quantity!.trim(),
     totalCents: input.totalCents,
     kind: ReceiptItemKind.product,
   );
@@ -86,7 +88,11 @@ Receipt addReceiptItem(
   );
 }
 
-Receipt updateReceiptItem(Receipt receipt, String itemId, ProductItemUpdate update) {
+Receipt updateReceiptItem(
+  Receipt receipt,
+  String itemId,
+  ProductItemUpdate update,
+) {
   return recalculateReceiptAmounts(
     receipt.copyWith(
       items: receipt.items.map((item) {
@@ -96,7 +102,9 @@ Receipt updateReceiptItem(Receipt receipt, String itemId, ProductItemUpdate upda
 
         return item.copyWith(
           name: update.name.trim().isEmpty ? item.name : update.name.trim(),
-          quantity: update.quantity.trim().isEmpty ? '1' : update.quantity.trim(),
+          quantity: update.quantity.trim().isEmpty
+              ? '1'
+              : update.quantity.trim(),
           totalCents: update.totalCents,
         );
       }).toList(),

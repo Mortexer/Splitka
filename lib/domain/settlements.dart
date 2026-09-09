@@ -116,7 +116,10 @@ Map<String, int> calculateReceiptShares(Receipt receipt) {
       continue;
     }
 
-    for (final entry in splitCents(item.totalCents, assignment.participantIds).entries) {
+    for (final entry in splitCents(
+      item.totalCents,
+      assignment.participantIds,
+    ).entries) {
       shares[entry.key] = (shares[entry.key] ?? 0) + entry.value;
     }
   }
@@ -125,7 +128,9 @@ Map<String, int> calculateReceiptShares(Receipt receipt) {
 }
 
 Settlement calculateSettlement(Household household) {
-  final memberById = {for (final person in household.members) person.id: person};
+  final memberById = {
+    for (final person in household.members) person.id: person,
+  };
   final paid = {for (final person in household.members) person.id: 0};
   final shares = {for (final person in household.members) person.id: 0};
   var includedCents = 0;
@@ -172,12 +177,7 @@ Receipt updateReceiptAssignment(
 ) {
   final next = updater(getAssignment(receipt, itemId));
 
-  return receipt.copyWith(
-    assignments: {
-      ...receipt.assignments,
-      itemId: next,
-    },
-  );
+  return receipt.copyWith(assignments: {...receipt.assignments, itemId: next});
 }
 
 int? getItemSharePreview(ReceiptItem item, ItemAssignment assignment) {
@@ -188,17 +188,22 @@ int? getItemSharePreview(ReceiptItem item, ItemAssignment assignment) {
   return item.totalCents ~/ assignment.participantIds.length;
 }
 
-List<Transfer> _buildTransfers(List<PersonBalance> balances, Map<String, Person> memberById) {
-  final creditors = balances
-      .where((balance) => balance.balanceCents > 0)
-      .map(_MutableCreditor.fromBalance)
-      .toList()
-    ..sort((a, b) => b.balanceCents.compareTo(a.balanceCents));
-  final debtors = balances
-      .where((balance) => balance.balanceCents < 0)
-      .map(_MutableDebtor.fromBalance)
-      .toList()
-    ..sort((a, b) => b.debtCents.compareTo(a.debtCents));
+List<Transfer> _buildTransfers(
+  List<PersonBalance> balances,
+  Map<String, Person> memberById,
+) {
+  final creditors =
+      balances
+          .where((balance) => balance.balanceCents > 0)
+          .map(_MutableCreditor.fromBalance)
+          .toList()
+        ..sort((a, b) => b.balanceCents.compareTo(a.balanceCents));
+  final debtors =
+      balances
+          .where((balance) => balance.balanceCents < 0)
+          .map(_MutableDebtor.fromBalance)
+          .toList()
+        ..sort((a, b) => b.debtCents.compareTo(a.debtCents));
   final transfers = <Transfer>[];
 
   var creditorIndex = 0;
@@ -207,7 +212,9 @@ List<Transfer> _buildTransfers(List<PersonBalance> balances, Map<String, Person>
   while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
     final creditor = creditors[creditorIndex];
     final debtor = debtors[debtorIndex];
-    final amountCents = creditor.balanceCents < debtor.debtCents ? creditor.balanceCents : debtor.debtCents;
+    final amountCents = creditor.balanceCents < debtor.debtCents
+        ? creditor.balanceCents
+        : debtor.debtCents;
 
     if (amountCents > 0) {
       transfers.add(

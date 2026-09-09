@@ -5,10 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/models.dart';
 
 class LocalHouseholdSnapshot {
-  const LocalHouseholdSnapshot({
-    required this.household,
-    required this.exists,
-  });
+  const LocalHouseholdSnapshot({required this.household, required this.exists});
 
   final Household household;
   final bool exists;
@@ -43,7 +40,10 @@ class LocalStore {
 
     try {
       return LocalHouseholdSnapshot(
-        household: Household.fromJson(jsonDecode(saved) as Map<String, dynamic>, fallbackId: normalized),
+        household: Household.fromJson(
+          jsonDecode(saved) as Map<String, dynamic>,
+          fallbackId: normalized,
+        ),
         exists: true,
       );
     } catch (_) {
@@ -56,7 +56,10 @@ class LocalStore {
 
   Future<void> saveHousehold(Household household) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_householdKey(household.id), jsonEncode(household.toJson()));
+    await prefs.setString(
+      _householdKey(household.id),
+      jsonEncode(household.toJson()),
+    );
   }
 
   Future<String> loadOrCreateClientId() async {
@@ -67,7 +70,8 @@ class LocalStore {
       return saved;
     }
 
-    final clientId = 'client-${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
+    final clientId =
+        'client-${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
     await prefs.setString(_clientIdKey, clientId);
     return clientId;
   }

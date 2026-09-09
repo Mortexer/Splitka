@@ -21,7 +21,9 @@ class SplitkaFirebaseConfig {
   );
   static const messagingSenderId = String.fromEnvironment(
     'FIREBASE_MESSAGING_SENDER_ID',
-    defaultValue: String.fromEnvironment('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+    defaultValue: String.fromEnvironment(
+      'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+    ),
   );
   static const appId = String.fromEnvironment(
     'FIREBASE_APP_ID',
@@ -29,7 +31,10 @@ class SplitkaFirebaseConfig {
   );
 
   static bool get isConfigured {
-    return apiKey.isNotEmpty && projectId.isNotEmpty && appId.isNotEmpty && messagingSenderId.isNotEmpty;
+    return apiKey.isNotEmpty &&
+        projectId.isNotEmpty &&
+        appId.isNotEmpty &&
+        messagingSenderId.isNotEmpty;
   }
 
   static FirebaseOptions get options {

@@ -6,21 +6,12 @@ import '../domain/models.dart';
 import '../storage/firebase_store.dart';
 import '../storage/local_store.dart';
 
-enum SyncState {
-  loading,
-  local,
-  connecting,
-  saving,
-  online,
-  error,
-}
+enum SyncState { loading, local, connecting, saving, online, error }
 
 class HouseholdController extends ChangeNotifier {
-  HouseholdController({
-    LocalStore? localStore,
-    FirebaseStore? firebaseStore,
-  })  : _localStore = localStore ?? LocalStore(),
-        _firebaseStore = firebaseStore ?? FirebaseStore();
+  HouseholdController({LocalStore? localStore, FirebaseStore? firebaseStore})
+    : _localStore = localStore ?? LocalStore(),
+      _firebaseStore = firebaseStore ?? FirebaseStore();
 
   final LocalStore _localStore;
   final FirebaseStore _firebaseStore;
@@ -46,7 +37,9 @@ class HouseholdController extends ChangeNotifier {
       _localSnapshotExists = snapshot.exists;
       _clientId = clientId;
       loaded = true;
-      syncState = _firebaseStore.isConfigured ? SyncState.connecting : SyncState.local;
+      syncState = _firebaseStore.isConfigured
+          ? SyncState.connecting
+          : SyncState.local;
       error = null;
       notifyListeners();
 
@@ -68,7 +61,9 @@ class HouseholdController extends ChangeNotifier {
     roomCode = normalized;
     household = snapshot.household;
     _localSnapshotExists = snapshot.exists;
-    syncState = _firebaseStore.isConfigured ? SyncState.connecting : SyncState.local;
+    syncState = _firebaseStore.isConfigured
+        ? SyncState.connecting
+        : SyncState.local;
     error = null;
     notifyListeners();
 
@@ -76,14 +71,15 @@ class HouseholdController extends ChangeNotifier {
   }
 
   Future<void> commit(Household Function(Household current) updater) async {
-    final next = updater(household).copyWith(
-      id: roomCode,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-    );
+    final next = updater(
+      household,
+    ).copyWith(id: roomCode, updatedAt: DateTime.now().millisecondsSinceEpoch);
 
     household = next;
     _localSnapshotExists = true;
-    syncState = _firebaseStore.isConfigured ? SyncState.saving : SyncState.local;
+    syncState = _firebaseStore.isConfigured
+        ? SyncState.saving
+        : SyncState.local;
     error = null;
     notifyListeners();
 
@@ -116,27 +112,27 @@ class HouseholdController extends ChangeNotifier {
     syncState = SyncState.connecting;
     notifyListeners();
 
-    _remoteSubscription = _firebaseStore.watchHousehold(roomCode).listen(
-      (change) {
-        if (change == null) {
-          _createRemoteFromLocal();
-          return;
-        }
+    _remoteSubscription = _firebaseStore.watchHousehold(roomCode).listen((
+      change,
+    ) {
+      if (change == null) {
+        _createRemoteFromLocal();
+        return;
+      }
 
-        if (_localSnapshotExists && change.household.updatedAt < household.updatedAt) {
-          _pushLocalToRemote();
-          return;
-        }
+      if (_localSnapshotExists &&
+          change.household.updatedAt < household.updatedAt) {
+        _pushLocalToRemote();
+        return;
+      }
 
-        household = change.household;
-        _localSnapshotExists = true;
-        syncState = change.hasPendingWrites ? SyncState.saving : SyncState.online;
-        error = null;
-        notifyListeners();
-        unawaited(_localStore.saveHousehold(change.household));
-      },
-      onError: _markError,
-    );
+      household = change.household;
+      _localSnapshotExists = true;
+      syncState = change.hasPendingWrites ? SyncState.saving : SyncState.online;
+      error = null;
+      notifyListeners();
+      unawaited(_localStore.saveHousehold(change.household));
+    }, onError: _markError);
   }
 
   Future<void> _createRemoteFromLocal() async {
@@ -146,7 +142,10 @@ class HouseholdController extends ChangeNotifier {
 
     try {
       await _localStore.saveHousehold(household);
-      await _firebaseStore.saveHousehold(household.copyWith(id: roomCode), _clientId ?? 'unknown-client');
+      await _firebaseStore.saveHousehold(
+        household.copyWith(id: roomCode),
+        _clientId ?? 'unknown-client',
+      );
       syncState = SyncState.online;
       error = null;
       notifyListeners();
@@ -160,7 +159,10 @@ class HouseholdController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _firebaseStore.saveHousehold(household, _clientId ?? 'unknown-client');
+      await _firebaseStore.saveHousehold(
+        household,
+        _clientId ?? 'unknown-client',
+      );
       syncState = SyncState.online;
       error = null;
       notifyListeners();

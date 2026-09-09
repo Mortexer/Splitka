@@ -3,7 +3,9 @@ enum ReceiptItemKind {
   depositReturn;
 
   static ReceiptItemKind fromJson(Object? value) {
-    return value == 'depositReturn' ? ReceiptItemKind.depositReturn : ReceiptItemKind.product;
+    return value == 'depositReturn'
+        ? ReceiptItemKind.depositReturn
+        : ReceiptItemKind.product;
   }
 
   String toJson() {
@@ -15,11 +17,7 @@ enum ReceiptItemKind {
 }
 
 class Person {
-  const Person({
-    required this.id,
-    required this.name,
-    required this.color,
-  });
+  const Person({required this.id, required this.name, required this.color});
 
   final String id;
   final String name;
@@ -34,11 +32,7 @@ class Person {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'color': _colorToJson(color),
-    };
+    return {'id': id, 'name': name, 'color': _colorToJson(color)};
   }
 }
 
@@ -222,7 +216,10 @@ class Receipt {
       payerId: json['payerId'] as String? ?? '',
       items: _mapList(json['items'], ReceiptItem.fromJson),
       assignments: rawAssignments.map(
-        (key, value) => MapEntry(key, ItemAssignment.fromJson(value as Map<String, dynamic>)),
+        (key, value) => MapEntry(
+          key,
+          ItemAssignment.fromJson(value as Map<String, dynamic>),
+        ),
       ),
       grossCents: _intFromJson(json['grossCents']),
       depositCents: _intFromJson(json['depositCents']),
@@ -241,7 +238,9 @@ class Receipt {
       'importedAt': importedAt,
       'payerId': payerId,
       'items': items.map((item) => item.toJson()).toList(),
-      'assignments': assignments.map((key, value) => MapEntry(key, value.toJson())),
+      'assignments': assignments.map(
+        (key, value) => MapEntry(key, value.toJson()),
+      ),
       'grossCents': grossCents,
       'depositCents': depositCents,
       'depositReturnCents': depositReturnCents,
@@ -280,9 +279,15 @@ class Household {
   factory Household.fromJson(Map<String, dynamic> json, {String? fallbackId}) {
     return Household(
       id: json['id'] as String? ?? fallbackId ?? defaultRoomCode,
-      members: _mapList(json['members'], Person.fromJson).ifEmpty(defaultMembers),
+      members: _mapList(
+        json['members'],
+        Person.fromJson,
+      ).ifEmpty(defaultMembers),
       receipts: _mapList(json['receipts'], Receipt.fromJson),
-      updatedAt: _intFromJson(json['updatedAt'], fallback: DateTime.now().millisecondsSinceEpoch),
+      updatedAt: _intFromJson(
+        json['updatedAt'],
+        fallback: DateTime.now().millisecondsSinceEpoch,
+      ),
     );
   }
 

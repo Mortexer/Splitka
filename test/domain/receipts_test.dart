@@ -26,7 +26,11 @@ void main() {
     test('adds, edits and removes product items with recalculated totals', () {
       final receipt = createManualReceipt(
         defaultMembers,
-        ManualReceiptInput(title: 'Zakupy', payerId: 'danus', now: DateTime.utc(2026, 9, 9, 12)),
+        ManualReceiptInput(
+          title: 'Zakupy',
+          payerId: 'danus',
+          now: DateTime.utc(2026, 9, 9, 12),
+        ),
       );
       const bread = ReceiptItem(
         id: 'bread',
@@ -44,14 +48,22 @@ void main() {
       );
 
       final withItems = addReceiptItem(
-        addReceiptItem(receipt, bread, createAssignment('bread', ['danus', 'kubus'])),
+        addReceiptItem(
+          receipt,
+          bread,
+          createAssignment('bread', ['danus', 'kubus']),
+        ),
         cheese,
         createAssignment('cheese', ['danus', 'kubus', 'damian']),
       );
       final edited = updateReceiptItem(
         withItems,
         'bread',
-        const ProductItemUpdate(name: 'Chleb tostowy', quantity: '1', totalCents: 699),
+        const ProductItemUpdate(
+          name: 'Chleb tostowy',
+          quantity: '1',
+          totalCents: 699,
+        ),
       );
       final withoutCheese = removeReceiptItem(edited, 'cheese');
 
