@@ -183,19 +183,12 @@ class _Header extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.receipt_long_rounded,
-                    color: AppColors.primaryForeground,
-                    size: 18,
-                  ),
+                Image.asset(
+                  'assets/branding/splitka-foreground.png',
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
