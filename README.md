@@ -21,6 +21,16 @@ Domyslne osoby:
 - zapisuje dane lokalnie na telefonie,
 - opcjonalnie synchronizuje pokoj przez Firestore, jesli podasz konfiguracje Firebase.
 
+Synchronizacja jest na etapie prototypu. Przed wspolnym uzywaniem trzeba
+dopiac dostep do pokoju, reguly bazy i obsluge rownoczesnych zmian.
+Kolejne zadania i warunki ich zakonczenia: [Plan prac](docs/ROADMAP.md).
+
+## Ikona
+
+Ikona Splitki jest ustawiona na Androidzie, iOS i w naglowku aplikacji.
+Pliki zrodlowe i opis generowania: [Branding](assets/branding/README.md).
+Po zmianie grafiki uruchom `dart run tool/generate_icons.dart`.
+
 ## Start lokalny
 
 ```powershell
