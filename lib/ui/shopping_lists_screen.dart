@@ -88,16 +88,46 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
               return ChoiceChip(
                 selected: selected,
                 showCheckmark: false,
-                avatar: Icon(
-                  listId == commonShoppingListId
-                      ? Icons.groups_rounded
-                      : Icons.person_rounded,
-                  size: 17,
-                  color: selected
-                      ? AppColors.primaryForeground
-                      : Color(person?.color ?? AppColors.primary.toARGB32()),
+                avatar: listId == commonShoppingListId
+                    ? Icon(
+                        Icons.groups_rounded,
+                        size: 17,
+                        color: selected
+                            ? AppColors.primaryForeground
+                            : AppColors.textMuted,
+                      )
+                    : PersonAvatar(person: person!, size: 18),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(shoppingListName(household, listId)),
+                    const SizedBox(width: 6),
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 17),
+                      height: 17,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primaryForeground.withValues(
+                                alpha: 0.18,
+                              )
+                            : AppColors.muted,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        shoppingItems(
+                          household,
+                          listId,
+                        ).where((item) => !item.completed).length.toString(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                label: Text(shoppingListName(household, listId)),
                 onSelected: (_) {
                   _drafts[_selectedListId] = _itemController.text;
                   setState(() => _selectedListId = listId);
@@ -112,10 +142,10 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
                   color: selected
                       ? AppColors.primaryForeground
                       : AppColors.text,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(999),
                 ),
               );
             },
@@ -125,25 +155,36 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 34),
             children: [
-              SectionHeader(
-                title: shoppingListName(household, _selectedListId),
-                meta: pending.isEmpty
-                    ? 'brak'
-                    : '${pending.length} do kupienia',
-                icon: Icons.shopping_cart_outlined,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: ValueKey('shopping-input-$_selectedListId'),
-                controller: _itemController,
-                enabled: !_adding,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _addItem(),
-                decoration: InputDecoration(
-                  hintText: 'Dodaj produkt',
-                  suffixIcon: IconButton(
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: ValueKey('shopping-input-$_selectedListId'),
+                      controller: _itemController,
+                      enabled: !_adding,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _addItem(),
+                      decoration: InputDecoration(
+                        hintText:
+                            'Dodaj do listy „${shoppingListName(household, _selectedListId)}”',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
                     tooltip: 'Dodaj do listy',
                     onPressed: _adding ? null : _addItem,
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size(44, 44),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.primaryForeground,
+                      disabledBackgroundColor: AppColors.primary.withValues(
+                        alpha: 0.35,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
                     icon: _adding
                         ? const SizedBox.square(
                             dimension: 18,
@@ -151,9 +192,15 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
                           )
                         : const Icon(Icons.add_rounded),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 14),
+              _ListMeta(
+                household: household,
+                listId: _selectedListId,
+                pendingCount: pending.length,
+              ),
+              const SizedBox(height: 10),
               if (visibleItems.isEmpty)
                 const _EmptyShoppingList()
               else
@@ -202,37 +249,58 @@ class _ShoppingItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
-      child: Row(
-        children: [
-          Checkbox(
-            value: item.completed,
-            onChanged: (_) => onToggle(),
-            activeColor: AppColors.primary,
-            checkColor: AppColors.primaryForeground,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+    return Opacity(
+      opacity: item.completed ? 0.6 : 1,
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(11, 9, 6, 9),
+        child: Row(
+          children: [
+            IconButton(
+              tooltip: item.completed
+                  ? 'Oznacz jako do kupienia'
+                  : 'Oznacz jako kupione',
+              onPressed: onToggle,
+              style: IconButton.styleFrom(
+                fixedSize: const Size(28, 28),
+                minimumSize: const Size(28, 28),
+                padding: EdgeInsets.zero,
+                backgroundColor: item.completed
+                    ? AppColors.primary
+                    : AppColors.background,
+                foregroundColor: item.completed
+                    ? AppColors.primaryForeground
+                    : Colors.transparent,
+                side: BorderSide(
+                  color: item.completed ? AppColors.primary : AppColors.border,
+                ),
+                shape: const CircleBorder(),
+              ),
+              icon: const Icon(Icons.check_rounded, size: 17),
             ),
-          ),
-          Expanded(
-            child: Text(
-              item.name,
-              style: TextStyle(
-                color: item.completed ? AppColors.textMuted : AppColors.text,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                decoration: item.completed ? TextDecoration.lineThrough : null,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                item.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: item.completed ? AppColors.textMuted : AppColors.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  decoration: item.completed
+                      ? TextDecoration.lineThrough
+                      : null,
+                ),
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Usuń produkt',
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline_rounded, size: 20),
-            color: AppColors.textMuted,
-          ),
-        ],
+            IconButton(
+              tooltip: 'Usuń produkt',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline_rounded, size: 19),
+              color: AppColors.textMuted,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -243,25 +311,75 @@ class _EmptyShoppingList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 52),
-      child: Column(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 38),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Column(
         children: [
-          Icon(
-            Icons.shopping_basket_outlined,
-            size: 38,
-            color: AppColors.textMuted,
-          ),
-          SizedBox(height: 10),
           Text(
-            'Lista jest pusta',
+            'Pusta lista',
             style: TextStyle(
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w800,
+              color: AppColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            'Dodaj pierwszą rzecz w polu powyżej.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ListMeta extends StatelessWidget {
+  const _ListMeta({
+    required this.household,
+    required this.listId,
+    required this.pendingCount,
+  });
+
+  final Household household;
+  final String listId;
+  final int pendingCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final shared = listId == commonShoppingListId;
+    final person = shared
+        ? null
+        : household.members.firstWhere((member) => member.id == listId);
+    return Row(
+      children: [
+        if (shared)
+          const Icon(Icons.groups_rounded, size: 17, color: AppColors.textMuted)
+        else
+          PersonAvatar(person: person!, size: 20),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            shared ? 'Lista wspólna' : 'Lista: ${person!.name}',
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          '$pendingCount do kupienia',
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+        ),
+      ],
     );
   }
 }
