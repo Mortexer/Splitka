@@ -361,6 +361,7 @@ class SyncBadge extends StatelessWidget {
             SyncState.connecting => 'Łączenie',
             SyncState.saving => 'Zapis',
             SyncState.online => 'Chmura',
+            SyncState.offline => 'Offline',
             SyncState.local => 'Lokalnie',
             SyncState.error => 'Błąd',
           };

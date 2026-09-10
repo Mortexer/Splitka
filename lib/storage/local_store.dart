@@ -5,15 +5,36 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/models.dart';
 
 class LocalHouseholdSnapshot {
-  const LocalHouseholdSnapshot({required this.household, required this.exists});
+  const LocalHouseholdSnapshot({
+    required this.household,
+    required this.exists,
+    this.revision = 0,
+    this.inviteCode,
+  });
 
   final Household household;
   final bool exists;
+  final int revision;
+  final String? inviteCode;
 }
 
 class LocalStore {
   static const _roomCodeKey = 'splitka.roomCode';
   static const _clientIdKey = 'splitka.clientId';
+  static const _cloudRoomIdKey = 'splitka.cloudRoomId';
+  Future<void> _writes = Future.value();
+
+  Future<String?> loadCloudRoomId() async {
+    return (await SharedPreferences.getInstance()).getString(_cloudRoomIdKey);
+  }
+
+  Future<void> saveCloudRoomId(String? roomId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = roomId == null
+        ? await prefs.remove(_cloudRoomIdKey)
+        : await prefs.setString(_cloudRoomIdKey, roomId);
+    if (!saved) throw StateError('Nie udało się zapisać wyboru mieszkania.');
+  }
 
   Future<String> loadPersistedRoomCode() async {
     final prefs = await SharedPreferences.getInstance();
@@ -27,7 +48,7 @@ class LocalStore {
   }
 
   Future<LocalHouseholdSnapshot> loadHouseholdSnapshot(String roomCode) async {
-    final normalized = normalizeRoomCode(roomCode);
+    final normalized = roomCode;
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_householdKey(normalized));
 
@@ -39,12 +60,12 @@ class LocalStore {
     }
 
     try {
+      final data = jsonDecode(saved) as Map<String, dynamic>;
       return LocalHouseholdSnapshot(
-        household: Household.fromJson(
-          jsonDecode(saved) as Map<String, dynamic>,
-          fallbackId: normalized,
-        ),
+        household: Household.fromJson(data, fallbackId: normalized),
         exists: true,
+        revision: data['cloudRevision'] as int? ?? 0,
+        inviteCode: data['inviteCode'] as String?,
       );
     } catch (_) {
       return LocalHouseholdSnapshot(
@@ -54,12 +75,27 @@ class LocalStore {
     }
   }
 
-  Future<void> saveHousehold(Household household) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _householdKey(household.id),
-      jsonEncode(household.toJson()),
-    );
+  Future<void> saveHousehold(
+    Household household, {
+    int revision = 0,
+    String? inviteCode,
+  }) {
+    final next = _writes.then((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = await prefs.setString(
+        _householdKey(household.id),
+        jsonEncode({
+          ...household.toJson(),
+          'cloudRevision': revision,
+          'inviteCode': inviteCode,
+        }),
+      );
+      if (!saved) {
+        throw StateError('Nie udało się zapisać danych na telefonie.');
+      }
+    });
+    _writes = next.catchError((Object _) {});
+    return next;
   }
 
   Future<String> loadOrCreateClientId() async {
@@ -77,7 +113,7 @@ class LocalStore {
   }
 
   String _householdKey(String roomCode) {
-    return 'splitka.household.${normalizeRoomCode(roomCode)}';
+    return 'splitka.household.$roomCode';
   }
 }
 
