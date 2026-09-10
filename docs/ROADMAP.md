@@ -13,6 +13,8 @@ Funkcje commitujemy osobno i wysylamy do Mortexer/Splitka.
 - Konfiguracja Android/iOS dla Firebase splitka-18560, anonimowa tozsamosc,
   tworzenie mieszkania i dolaczanie przez prywatny kod zaproszenia.
 - Reguly czlonkostwa oraz transakcyjne zmiany online bez porownywania zegarow.
+- Dwie glowne zakladki: rachunki oraz listy zakupow; jedna lista wspolna i po
+  jednej dla kazdego domownika, z dodawaniem, odhaczaniem i usuwaniem pozycji.
 - Testy kontrolera, formularzy i regul, w tym jednoczesny zapis dwoch klientow.
 
 Nowa instalacja przechowuje rachunki lokalnie, dopoki nie utworzysz mieszkania

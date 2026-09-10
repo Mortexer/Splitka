@@ -54,7 +54,8 @@ telefonow. Powrot do lokalnych nie usuwa rachunkow w chmurze ani czlonkostwa.
 
 ## Jak dziala zapis
 
-- `/households/{id}`: mieszkanie, rachunki i rosnaca rewizja, schemat 2.
+- `/households/{id}`: mieszkanie, rachunki, listy zakupow i rosnaca rewizja,
+  schemat 2. Lista `common` jest wspolna, pozostale maja ID domownikow.
 - `/households/{id}/members/{uid}`: uprawnienie anonimowej instalacji.
 - `/invites/{code}`: losowe zaproszenie 128-bit, bez mozliwosci listowania.
 - Tylko czlonkowie czytaja i zmieniaja mieszkanie. Kazdy ma takie same prawa

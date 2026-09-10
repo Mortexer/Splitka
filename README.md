@@ -7,10 +7,13 @@ Domyslne osoby: Danus, Kubus, Damian. Android i iOS, bez Expo.
 
 - Importuje JSON paragonu Biedronki oraz reczne rachunki i produkty.
 - Dzieli kazda pozycje na wybrane osoby albo pomija ja w rozliczeniu.
+- Ma osobna zakladke list zakupow: wspolna oraz po jednej dla kazdego domownika.
+- Pozwala dodawac, odhaczac i usuwac produkty z list zakupow.
 - Kaucje pokazuje informacyjnie, zwroty opakowan zmniejszaja kwote.
 - Liczy w groszach, kto komu ma oddac pieniadze.
 - Zapisuje dane lokalnie; pozwala tworzyc wspolne mieszkanie w Firebase
-  i dolaczac przez prywatny, losowy kod zaproszenia.
+  i dolaczac przez prywatny, losowy kod zaproszenia. Rachunki i listy zakupow
+  synchronizuja sie w ramach tego samego mieszkania.
 - Korzysta z anonimowej tozsamosci, bez ekranu rejestracji.
 - Synchronizuje zmiany online transakcjami, zachowuje ostatni podglad offline.
 - Potwierdza usuwanie i nie zamyka formularzy po nieudanym zapisie.
