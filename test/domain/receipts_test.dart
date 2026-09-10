@@ -1,9 +1,38 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitka_flutter/domain/models.dart';
 import 'package:splitka_flutter/domain/receipts.dart';
+import 'package:splitka_flutter/domain/settlements.dart';
 
 void main() {
   group('manual receipt helpers', () {
+    test('edits and assignments cannot revive a deleted item', () {
+      final receipt = createManualReceipt(
+        defaultMembers,
+        const ManualReceiptInput(title: 'Zakupy'),
+      );
+      expect(
+        () => updateReceiptItem(
+          receipt,
+          'deleted',
+          const ProductItemUpdate(
+            name: 'Chleb',
+            quantity: '1',
+            totalCents: 500,
+          ),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => updateReceiptAssignment(
+          receipt,
+          'deleted',
+          (assignment) => assignment,
+        ),
+        throwsFormatException,
+      );
+      expect(receipt.assignments, isEmpty);
+    });
+
     test('creates an empty manual receipt for a selected payer', () {
       final receipt = createManualReceipt(
         defaultMembers,

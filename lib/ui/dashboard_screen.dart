@@ -6,6 +6,7 @@ import '../domain/receipts.dart';
 import '../domain/settlements.dart';
 import '../state/household_controller.dart';
 import 'common_widgets.dart';
+import 'room_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -21,7 +22,7 @@ class DashboardScreen extends StatefulWidget {
   final HouseholdController controller;
   final bool importing;
   final VoidCallback onImport;
-  final ValueChanged<ManualReceiptInput> onAddManualReceipt;
+  final Future<bool> Function(ManualReceiptInput) onAddManualReceipt;
   final VoidCallback onClearAll;
   final ValueChanged<String> onOpenReceipt;
 
@@ -30,31 +31,9 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  late final TextEditingController _roomController;
   bool _manualFormOpen = false;
 
   HouseholdController get controller => widget.controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _roomController = TextEditingController(text: controller.roomCode);
-  }
-
-  @override
-  void didUpdateWidget(covariant DashboardScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_roomController.text != controller.roomCode &&
-        oldWidget.controller.roomCode != controller.roomCode) {
-      _roomController.text = controller.roomCode;
-    }
-  }
-
-  @override
-  void dispose() {
-    _roomController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,8 +47,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _Header(
                 controller: controller,
-                roomController: _roomController,
-                onRoomChanged: () => setState(() {}),
+                onRoomPressed: () => showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => RoomDialog(controller: controller),
+                ),
               ),
               Expanded(
                 child: ListView(
@@ -108,9 +90,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ManualReceiptCard(
                         members: household.members,
                         onCancel: () => setState(() => _manualFormOpen = false),
-                        onSubmit: (input) {
-                          setState(() => _manualFormOpen = false);
-                          widget.onAddManualReceipt(input);
+                        onSubmit: (input) async {
+                          final saved = await widget.onAddManualReceipt(input);
+                          if (saved && mounted) {
+                            setState(() => _manualFormOpen = false);
+                          }
+                          return saved;
                         },
                       ),
                     ],
@@ -156,21 +141,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({
-    required this.controller,
-    required this.roomController,
-    required this.onRoomChanged,
-  });
+  const _Header({required this.controller, required this.onRoomPressed});
 
   final HouseholdController controller;
-  final TextEditingController roomController;
-  final VoidCallback onRoomChanged;
+  final VoidCallback onRoomPressed;
 
   @override
   Widget build(BuildContext context) {
     final household = controller.household;
-    final saved =
-        roomController.text.trim().toLowerCase() == controller.roomCode;
 
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -204,7 +182,11 @@ class _Header extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        controller.roomCode,
+                        controller.isCloudRoom
+                            ? 'Wspólne mieszkanie'
+                            : 'Na tym telefonie',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
@@ -225,37 +207,36 @@ class _Header extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: roomController,
-                    autocorrect: false,
-                    textCapitalization: TextCapitalization.none,
-                    decoration: const InputDecoration(hintText: 'kod pokoju'),
-                    onChanged: (_) => onRoomChanged(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: saved
-                      ? null
-                      : () => controller.switchRoomCode(roomController.text),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.card,
-                    disabledBackgroundColor: AppColors.card,
-                    foregroundColor: saved
-                        ? AppColors.textMuted
-                        : AppColors.primary,
-                    disabledForegroundColor: AppColors.textMuted,
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                  child: OutlinedButton.icon(
+                    onPressed: controller.busy ? null : onRoomPressed,
+                    icon: const Icon(Icons.home_outlined, size: 18),
+                    label: Text(
+                      controller.isCloudRoom
+                          ? 'Mieszkanie'
+                          : 'Połącz mieszkanie',
                     ),
-                    fixedSize: const Size(42, 42),
                   ),
-                  icon: const Icon(Icons.check_rounded, size: 18),
                 ),
+                if (controller.isCloudRoom) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Połącz ponownie',
+                    onPressed: controller.busy
+                        ? null
+                        : controller.retryConnection,
+                    icon: const Icon(Icons.sync_rounded, size: 20),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
+            if (controller.error != null) ...[
+              Text(
+                controller.error!,
+                style: const TextStyle(color: AppColors.danger, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+            ],
             Row(
               children: [
                 SizedBox(
@@ -309,7 +290,7 @@ class ManualReceiptCard extends StatefulWidget {
   });
 
   final List<Person> members;
-  final ValueChanged<ManualReceiptInput> onSubmit;
+  final Future<bool> Function(ManualReceiptInput) onSubmit;
   final VoidCallback onCancel;
 
   @override
@@ -319,6 +300,7 @@ class ManualReceiptCard extends StatefulWidget {
 class _ManualReceiptCardState extends State<ManualReceiptCard> {
   late final TextEditingController _titleController;
   late String _payerId;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -391,13 +373,17 @@ class _ManualReceiptCardState extends State<ManualReceiptCard> {
                 child: PrimaryActionButton(
                   label: 'Utwórz',
                   icon: Icons.add_rounded,
-                  enabled: canSave,
-                  onPressed: () => widget.onSubmit(
-                    ManualReceiptInput(
-                      title: _titleController.text,
-                      payerId: _payerId,
-                    ),
-                  ),
+                  enabled: canSave && !_saving,
+                  onPressed: () async {
+                    setState(() => _saving = true);
+                    await widget.onSubmit(
+                      ManualReceiptInput(
+                        title: _titleController.text,
+                        payerId: _payerId,
+                      ),
+                    );
+                    if (mounted) setState(() => _saving = false);
+                  },
                 ),
               ),
             ],
@@ -531,7 +517,9 @@ class ReceiptListItem extends StatelessWidget {
                   children: [
                     Text.rich(
                       TextSpan(
-                        text: receipt.storeName,
+                        text: receipt.title.isEmpty
+                            ? receipt.storeName
+                            : receipt.title,
                         children: [
                           TextSpan(
                             text:

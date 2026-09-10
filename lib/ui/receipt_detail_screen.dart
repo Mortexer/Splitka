@@ -34,9 +34,13 @@ class ReceiptDetailScreen extends StatelessWidget {
   onSetItemParticipants;
   final void Function(String itemId, String personId) onToggleItemParticipant;
   final ValueChanged<String> onToggleItemSkipped;
-  final void Function(ManualProductItemInput input, List<String> participantIds)
+  final Future<bool> Function(
+    ManualProductItemInput input,
+    List<String> participantIds,
+  )
   onAddItem;
-  final void Function(String itemId, ProductItemUpdate update) onUpdateItem;
+  final Future<bool> Function(String itemId, ProductItemUpdate update)
+  onUpdateItem;
   final ValueChanged<String> onDeleteItem;
   final VoidCallback onDeleteReceipt;
 
@@ -45,100 +49,107 @@ class ReceiptDetailScreen extends StatelessWidget {
     final totals = getReceiptTotals(receipt);
     final settlement = calculateSettlement(household);
 
-    return Scaffold(
-      body: SafeArea(
-        child: PageFrame(
-          child: Column(
-            children: [
-              _DetailHeader(
-                receipt: receipt,
-                pendingCount: totals.unassignedCount,
-                onBack: onBack,
-                onDeleteReceipt: onDeleteReceipt,
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
-                  children: [
-                    _PayerSection(
-                      receipt: receipt,
-                      members: household.members,
-                      onSetPayer: onSetPayer,
-                    ),
-                    const SizedBox(height: 14),
-                    _TotalsSection(receipt: receipt, totals: totals),
-                    const SizedBox(height: 14),
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SectionHeader(
-                            title: 'Szybki wybór',
-                            meta: 'produkty',
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SecondaryActionButton(
-                                  label: 'Wszyscy',
-                                  icon: Icons.group_rounded,
-                                  onPressed: onAssignAllProducts,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: SecondaryActionButton(
-                                  label: 'Nikt',
-                                  icon: Icons.block_rounded,
-                                  onPressed: onClearProductAssignments,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) onBack();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: PageFrame(
+            child: Column(
+              children: [
+                _DetailHeader(
+                  receipt: receipt,
+                  pendingCount: totals.unassignedCount,
+                  onBack: onBack,
+                  onDeleteReceipt: onDeleteReceipt,
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
+                    children: [
+                      _PayerSection(
+                        receipt: receipt,
+                        members: household.members,
+                        onSetPayer: onSetPayer,
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    AddItemForm(
-                      members: household.members,
-                      onAddItem: onAddItem,
-                    ),
-                    const SizedBox(height: 14),
-                    SectionHeader(
-                      title: 'Pozycje',
-                      meta: '${receipt.items.length} pozycji',
-                    ),
-                    const SizedBox(height: 10),
-                    ...receipt.items.map(
-                      (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: ItemCard(
-                          item: item,
-                          assignment: getAssignment(receipt, item.id),
-                          members: household.members,
-                          onAll: () => onSetItemParticipants(
-                            item.id,
-                            household.members
-                                .map((person) => person.id)
-                                .toList(),
-                          ),
-                          onNobody: () =>
-                              onSetItemParticipants(item.id, const []),
-                          onTogglePerson: (personId) =>
-                              onToggleItemParticipant(item.id, personId),
-                          onToggleSkipped: () => onToggleItemSkipped(item.id),
-                          onUpdate: (update) => onUpdateItem(item.id, update),
-                          onDelete: () => onDeleteItem(item.id),
+                      const SizedBox(height: 14),
+                      _TotalsSection(receipt: receipt, totals: totals),
+                      const SizedBox(height: 14),
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SectionHeader(
+                              title: 'Szybki wybór',
+                              meta: 'produkty',
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SecondaryActionButton(
+                                    label: 'Wszyscy',
+                                    icon: Icons.group_rounded,
+                                    onPressed: onAssignAllProducts,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: SecondaryActionButton(
+                                    label: 'Nikt',
+                                    icon: Icons.block_rounded,
+                                    onPressed: onClearProductAssignments,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    SettlementCard(settlement: settlement, compact: true),
-                  ],
+                      const SizedBox(height: 14),
+                      AddItemForm(
+                        members: household.members,
+                        onAddItem: onAddItem,
+                      ),
+                      const SizedBox(height: 14),
+                      SectionHeader(
+                        title: 'Pozycje',
+                        meta: '${receipt.items.length} pozycji',
+                      ),
+                      const SizedBox(height: 10),
+                      ...receipt.items.map(
+                        (item) => Padding(
+                          key: ValueKey(item.id),
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: ItemCard(
+                            item: item,
+                            assignment: getAssignment(receipt, item.id),
+                            members: household.members,
+                            onAll: () => onSetItemParticipants(
+                              item.id,
+                              household.members
+                                  .map((person) => person.id)
+                                  .toList(),
+                            ),
+                            onNobody: () =>
+                                onSetItemParticipants(item.id, const []),
+                            onTogglePerson: (personId) =>
+                                onToggleItemParticipant(item.id, personId),
+                            onToggleSkipped: () => onToggleItemSkipped(item.id),
+                            onUpdate: (update) => onUpdateItem(item.id, update),
+                            onDelete: () => onDeleteItem(item.id),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      SettlementCard(settlement: settlement, compact: true),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -189,7 +200,7 @@ class _DetailHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    receipt.storeName,
+                    receipt.title.isEmpty ? receipt.storeName : receipt.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -345,7 +356,10 @@ class AddItemForm extends StatefulWidget {
   });
 
   final List<Person> members;
-  final void Function(ManualProductItemInput input, List<String> participantIds)
+  final Future<bool> Function(
+    ManualProductItemInput input,
+    List<String> participantIds,
+  )
   onAddItem;
 
   @override
@@ -357,6 +371,7 @@ class _AddItemFormState extends State<AddItemForm> {
   final _amountController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   late List<String> _participantIds;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -462,7 +477,7 @@ class _AddItemFormState extends State<AddItemForm> {
                 child: PrimaryActionButton(
                   label: 'Dodaj',
                   icon: Icons.add_rounded,
-                  enabled: canSave,
+                  enabled: canSave && !_saving,
                   onPressed: () => _submit(amountCents),
                 ),
               ),
@@ -485,12 +500,13 @@ class _AddItemFormState extends State<AddItemForm> {
     });
   }
 
-  void _submit(int? amountCents) {
-    if (amountCents == null || amountCents <= 0) {
+  Future<void> _submit(int? amountCents) async {
+    if (_saving || amountCents == null || amountCents <= 0) {
       return;
     }
 
-    widget.onAddItem(
+    setState(() => _saving = true);
+    final saved = await widget.onAddItem(
       ManualProductItemInput(
         name: _nameController.text,
         quantity: _quantityController.text,
@@ -498,6 +514,9 @@ class _AddItemFormState extends State<AddItemForm> {
       ),
       _participantIds,
     );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (!saved) return;
     _nameController.clear();
     _amountController.clear();
     _quantityController.text = '1';
@@ -526,7 +545,7 @@ class ItemCard extends StatefulWidget {
   final VoidCallback onNobody;
   final ValueChanged<String> onTogglePerson;
   final VoidCallback onToggleSkipped;
-  final ValueChanged<ProductItemUpdate> onUpdate;
+  final Future<bool> Function(ProductItemUpdate) onUpdate;
   final VoidCallback onDelete;
 
   @override
@@ -659,9 +678,10 @@ class _ItemCardState extends State<ItemCard> {
               child: ItemEditForm(
                 item: widget.item,
                 onCancel: () => setState(() => _editing = false),
-                onSave: (update) {
-                  widget.onUpdate(update);
-                  setState(() => _editing = false);
+                onSave: (update) async {
+                  final saved = await widget.onUpdate(update);
+                  if (saved && mounted) setState(() => _editing = false);
+                  return saved;
                 },
               ),
             ),
@@ -737,7 +757,7 @@ class ItemEditForm extends StatefulWidget {
   });
 
   final ReceiptItem item;
-  final ValueChanged<ProductItemUpdate> onSave;
+  final Future<bool> Function(ProductItemUpdate) onSave;
   final VoidCallback onCancel;
 
   @override
@@ -745,6 +765,7 @@ class ItemEditForm extends StatefulWidget {
 }
 
 class _ItemEditFormState extends State<ItemEditForm> {
+  bool _saving = false;
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
   late final TextEditingController _quantityController;
@@ -828,19 +849,21 @@ class _ItemEditFormState extends State<ItemEditForm> {
                   child: PrimaryActionButton(
                     label: 'Zapisz',
                     icon: Icons.save_rounded,
-                    enabled: canSave,
-                    onPressed: () {
+                    enabled: canSave && !_saving,
+                    onPressed: () async {
                       if (amountCents == null || amountCents <= 0) {
                         return;
                       }
 
-                      widget.onSave(
+                      setState(() => _saving = true);
+                      await widget.onSave(
                         ProductItemUpdate(
                           name: _nameController.text,
                           quantity: _quantityController.text,
                           totalCents: amountCents,
                         ),
                       );
+                      if (mounted) setState(() => _saving = false);
                     },
                   ),
                 ),

@@ -29,6 +29,8 @@ class SplitkaApp extends StatefulWidget {
 }
 
 class _SplitkaAppState extends State<SplitkaApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   late final HouseholdController _controller;
   String? _openReceiptId;
   bool _importing = false;
@@ -51,6 +53,8 @@ class _SplitkaAppState extends State<SplitkaApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _messengerKey,
       title: 'Splitka',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
@@ -73,6 +77,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
 
           if (openReceipt != null) {
             return ReceiptDetailScreen(
+              key: ValueKey(openReceipt.id),
               household: _controller.household,
               receipt: openReceipt,
               onBack: () => setState(() => _openReceiptId = null),
@@ -95,12 +100,10 @@ class _SplitkaAppState extends State<SplitkaApp> {
               onToggleItemSkipped: (itemId) =>
                   unawaited(_toggleItemSkipped(openReceipt.id, itemId)),
               onAddItem: (input, participantIds) =>
-                  unawaited(_addItem(openReceipt.id, input, participantIds)),
-              onUpdateItem: (itemId, update) => unawaited(
-                _updateReceipt(
-                  openReceipt.id,
-                  (receipt) => updateReceiptItem(receipt, itemId, update),
-                ),
+                  _addItem(openReceipt.id, input, participantIds),
+              onUpdateItem: (itemId, update) => _updateReceipt(
+                openReceipt.id,
+                (receipt) => updateReceiptItem(receipt, itemId, update),
               ),
               onDeleteItem: (itemId) =>
                   unawaited(_deleteItem(openReceipt.id, itemId)),
@@ -112,7 +115,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
             controller: _controller,
             importing: _importing,
             onImport: () => unawaited(_importBiedronkaJson()),
-            onAddManualReceipt: (input) => unawaited(_addManualReceipt(input)),
+            onAddManualReceipt: _addManualReceipt,
             onClearAll: () => unawaited(_clearAllReceipts()),
             onOpenReceipt: (receiptId) =>
                 setState(() => _openReceiptId = receiptId),
@@ -160,13 +163,18 @@ class _SplitkaAppState extends State<SplitkaApp> {
         _controller.household.members,
       );
 
-      await _controller.commit(
+      final saved = await _controller.commit(
         (household) => household.copyWith(
           receipts: [imported.receipt, ...household.receipts],
         ),
       );
 
       if (!mounted) {
+        return;
+      }
+
+      if (!saved) {
+        _showSaveError();
         return;
       }
 
@@ -191,17 +199,22 @@ class _SplitkaAppState extends State<SplitkaApp> {
     }
   }
 
-  Future<void> _addManualReceipt(ManualReceiptInput input) async {
+  Future<bool> _addManualReceipt(ManualReceiptInput input) async {
     final receipt = createManualReceipt(_controller.household.members, input);
 
-    await _controller.commit(
+    final saved = await _controller.commit(
       (household) =>
           household.copyWith(receipts: [receipt, ...household.receipts]),
     );
 
+    if (!saved) {
+      _showSaveError();
+      return false;
+    }
     if (mounted) {
       setState(() => _openReceiptId = receipt.id);
     }
+    return true;
   }
 
   Future<void> _clearAllReceipts() async {
@@ -209,6 +222,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
       return;
     }
 
+    final receiptIds = _controller.household.receipts.map((r) => r.id).toSet();
     final confirmed = await _confirm(
       title: 'Wyczyscic rachunki?',
       message: 'Usunie to wszystkie paragony w tym pokoju.',
@@ -219,9 +233,18 @@ class _SplitkaAppState extends State<SplitkaApp> {
       return;
     }
 
-    await _controller.commit(
-      (household) => household.copyWith(receipts: const []),
+    final saved = await _controller.commit(
+      (household) => household.copyWith(
+        receipts: household.receipts
+            .where((r) => !receiptIds.contains(r.id))
+            .toList(),
+      ),
     );
+
+    if (!saved) {
+      _showSaveError();
+      return;
+    }
 
     if (mounted) {
       setState(() => _openReceiptId = null);
@@ -237,7 +260,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
 
     final confirmed = await _confirm(
       title: 'Usunac paragon?',
-      message: receipt.storeName,
+      message: receipt.title.isEmpty ? receipt.storeName : receipt.title,
       confirmLabel: 'Usun',
     );
 
@@ -245,7 +268,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
       return;
     }
 
-    await _controller.commit(
+    final saved = await _controller.commit(
       (household) => household.copyWith(
         receipts: household.receipts
             .where((item) => item.id != receiptId)
@@ -253,23 +276,33 @@ class _SplitkaAppState extends State<SplitkaApp> {
       ),
     );
 
+    if (!saved) {
+      _showSaveError();
+      return;
+    }
+
     if (mounted) {
       setState(() => _openReceiptId = null);
       _showSnack('Paragon usuniety.');
     }
   }
 
-  Future<void> _updateReceipt(
+  Future<bool> _updateReceipt(
     String receiptId,
     Receipt Function(Receipt receipt) updater,
   ) async {
-    await _controller.commit(
-      (household) => household.copyWith(
+    final saved = await _controller.commit((household) {
+      if (!household.receipts.any((receipt) => receipt.id == receiptId)) {
+        throw const FormatException('Ten paragon został już usunięty.');
+      }
+      return household.copyWith(
         receipts: household.receipts.map((receipt) {
           return receipt.id == receiptId ? updater(receipt) : receipt;
         }).toList(),
-      ),
-    );
+      );
+    });
+    if (!saved) _showSaveError();
+    return saved;
   }
 
   Future<void> _assignAllProducts(String receiptId) async {
@@ -373,7 +406,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
     );
   }
 
-  Future<void> _addItem(
+  Future<bool> _addItem(
     String receiptId,
     ManualProductItemInput input,
     List<String> participantIds,
@@ -384,13 +417,19 @@ class _SplitkaAppState extends State<SplitkaApp> {
       _normalizeParticipants(participantIds),
     );
 
-    await _updateReceipt(
+    return _updateReceipt(
       receiptId,
       (receipt) => addReceiptItem(receipt, item, assignment),
     );
   }
 
   Future<void> _deleteItem(String receiptId, String itemId) async {
+    final confirmed = await _confirm(
+      title: 'Usunąć pozycję?',
+      message: 'Pozycja zostanie usunięta z tego rachunku.',
+      confirmLabel: 'Usuń',
+    );
+    if (confirmed != true) return;
     await _updateReceipt(
       receiptId,
       (receipt) => removeReceiptItem(receipt, itemId),
@@ -411,7 +450,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
     required String confirmLabel,
   }) {
     return showDialog<bool>(
-      context: context,
+      context: _navigatorKey.currentContext!,
       builder: (context) {
         return AlertDialog(
           backgroundColor: AppColors.card,
@@ -442,8 +481,9 @@ class _SplitkaAppState extends State<SplitkaApp> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
+    if (!mounted) return;
+    _messengerKey.currentState
+      ?..clearSnackBars()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
@@ -451,6 +491,10 @@ class _SplitkaAppState extends State<SplitkaApp> {
           backgroundColor: AppColors.cardAlt,
         ),
       );
+  }
+
+  void _showSaveError() {
+    _showSnack(_controller.error ?? 'Zmiana nie została zapisana.');
   }
 }
 

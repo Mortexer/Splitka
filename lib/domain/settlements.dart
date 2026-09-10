@@ -175,6 +175,9 @@ Receipt updateReceiptAssignment(
   String itemId,
   ItemAssignment Function(ItemAssignment assignment) updater,
 ) {
+  if (!receipt.items.any((item) => item.id == itemId)) {
+    throw const FormatException('Ta pozycja zostala juz usunieta.');
+  }
   final next = updater(getAssignment(receipt, itemId));
 
   return receipt.copyWith(assignments: {...receipt.assignments, itemId: next});

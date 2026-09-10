@@ -93,6 +93,9 @@ Receipt updateReceiptItem(
   String itemId,
   ProductItemUpdate update,
 ) {
+  if (!receipt.items.any((item) => item.id == itemId)) {
+    throw const FormatException('Ta pozycja zostala juz usunieta.');
+  }
   return recalculateReceiptAmounts(
     receipt.copyWith(
       items: receipt.items.map((item) {
