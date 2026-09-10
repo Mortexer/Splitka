@@ -138,6 +138,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         if (household.receipts.isEmpty)
                           const EmptyState()
                         else ...[
+                          SettlementCard(
+                            settlement: settlement,
+                            members: household.members,
+                          ),
+                          const SizedBox(height: 14),
                           SectionHeader(
                             title: 'Paragony',
                             meta: household.receipts.length.toString(),
@@ -153,10 +158,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     widget.onOpenReceipt(receipt.id),
                               ),
                             ),
-                          ),
-                          SettlementCard(
-                            settlement: settlement,
-                            members: household.members,
                           ),
                         ],
                       ],

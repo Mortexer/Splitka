@@ -119,6 +119,16 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(ReceiptDetailScreen), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('Rozliczenie')).dy,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.textContaining('Testowy rachunek', findRichText: true),
+            )
+            .dy,
+      ),
+    );
     expect(tester.takeException(), isNull);
     await tester.tap(
       find.textContaining('Testowy rachunek', findRichText: true),
