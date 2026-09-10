@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'domain/models.dart';
 import 'domain/receipts.dart';
 import 'domain/settlements.dart';
+import 'domain/shopping_lists.dart';
 import 'importers/biedronka_parser.dart';
 import 'state/household_controller.dart';
 import 'ui/common_widgets.dart';
@@ -119,6 +120,10 @@ class _SplitkaAppState extends State<SplitkaApp> {
             onClearAll: () => unawaited(_clearAllReceipts()),
             onOpenReceipt: (receiptId) =>
                 setState(() => _openReceiptId = receiptId),
+            onAddShoppingItem: _addShoppingItem,
+            onToggleShoppingItem: _toggleShoppingItem,
+            onDeleteShoppingItem: _deleteShoppingItem,
+            onClearCompletedShoppingItems: _clearCompletedShoppingItems,
           );
         },
       ),
@@ -434,6 +439,38 @@ class _SplitkaAppState extends State<SplitkaApp> {
       receiptId,
       (receipt) => removeReceiptItem(receipt, itemId),
     );
+  }
+
+  Future<bool> _addShoppingItem(String listId, String name) async {
+    final saved = await _controller.commit(
+      (household) => addShoppingItem(household, listId, name),
+    );
+    if (!saved) _showSaveError();
+    return saved;
+  }
+
+  Future<bool> _toggleShoppingItem(String listId, String itemId) async {
+    final saved = await _controller.commit(
+      (household) => toggleShoppingItem(household, listId, itemId),
+    );
+    if (!saved) _showSaveError();
+    return saved;
+  }
+
+  Future<bool> _deleteShoppingItem(String listId, String itemId) async {
+    final saved = await _controller.commit(
+      (household) => removeShoppingItem(household, listId, itemId),
+    );
+    if (!saved) _showSaveError();
+    return saved;
+  }
+
+  Future<bool> _clearCompletedShoppingItems(String listId) async {
+    final saved = await _controller.commit(
+      (household) => clearCompletedShoppingItems(household, listId),
+    );
+    if (!saved) _showSaveError();
+    return saved;
   }
 
   List<String> _normalizeParticipants(List<String> participantIds) {

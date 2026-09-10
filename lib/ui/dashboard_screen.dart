@@ -7,6 +7,7 @@ import '../domain/settlements.dart';
 import '../state/household_controller.dart';
 import 'common_widgets.dart';
 import 'room_dialog.dart';
+import 'shopping_lists_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -17,6 +18,10 @@ class DashboardScreen extends StatefulWidget {
     required this.onAddManualReceipt,
     required this.onClearAll,
     required this.onOpenReceipt,
+    required this.onAddShoppingItem,
+    required this.onToggleShoppingItem,
+    required this.onDeleteShoppingItem,
+    required this.onClearCompletedShoppingItems,
   });
 
   final HouseholdController controller;
@@ -25,6 +30,12 @@ class DashboardScreen extends StatefulWidget {
   final Future<bool> Function(ManualReceiptInput) onAddManualReceipt;
   final VoidCallback onClearAll;
   final ValueChanged<String> onOpenReceipt;
+  final Future<bool> Function(String listId, String name) onAddShoppingItem;
+  final Future<bool> Function(String listId, String itemId)
+  onToggleShoppingItem;
+  final Future<bool> Function(String listId, String itemId)
+  onDeleteShoppingItem;
+  final Future<bool> Function(String listId) onClearCompletedShoppingItems;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -32,6 +43,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _manualFormOpen = false;
+  int _selectedTab = 0;
 
   HouseholdController get controller => widget.controller;
 
@@ -54,85 +66,130 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
+                child: IndexedStack(
+                  index: _selectedTab,
                   children: [
-                    Row(
+                    ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
                       children: [
-                        Expanded(
-                          child: PrimaryActionButton(
-                            label: widget.importing
-                                ? 'Importowanie...'
-                                : 'Importuj JSON',
-                            icon: Icons.upload_file_rounded,
-                            onPressed: widget.onImport,
-                            enabled: !widget.importing,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: PrimaryActionButton(
+                                label: widget.importing
+                                    ? 'Importowanie...'
+                                    : 'Importuj JSON',
+                                icon: Icons.upload_file_rounded,
+                                onPressed: widget.onImport,
+                                enabled: !widget.importing,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SecondaryActionButton(
+                                label: _manualFormOpen
+                                    ? 'Zamknij'
+                                    : 'Dodaj ręcznie',
+                                icon: _manualFormOpen
+                                    ? Icons.close_rounded
+                                    : Icons.add_rounded,
+                                onPressed: () => setState(
+                                  () => _manualFormOpen = !_manualFormOpen,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: SecondaryActionButton(
-                            label: _manualFormOpen
-                                ? 'Zamknij'
-                                : 'Dodaj ręcznie',
-                            icon: _manualFormOpen
-                                ? Icons.close_rounded
-                                : Icons.add_rounded,
-                            onPressed: () => setState(
-                              () => _manualFormOpen = !_manualFormOpen,
+                        if (_manualFormOpen) ...[
+                          const SizedBox(height: 14),
+                          ManualReceiptCard(
+                            members: household.members,
+                            onCancel: () =>
+                                setState(() => _manualFormOpen = false),
+                            onSubmit: (input) async {
+                              final saved = await widget.onAddManualReceipt(
+                                input,
+                              );
+                              if (saved && mounted) {
+                                setState(() => _manualFormOpen = false);
+                              }
+                              return saved;
+                            },
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        if (household.receipts.isEmpty)
+                          EmptyState(
+                            importing: widget.importing,
+                            onImport: widget.onImport,
+                          )
+                        else ...[
+                          SectionHeader(
+                            title: 'Paragony',
+                            meta: household.receipts.length.toString(),
+                          ),
+                          const SizedBox(height: 10),
+                          ...household.receipts.map(
+                            (receipt) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: ReceiptListItem(
+                                receipt: receipt,
+                                members: household.members,
+                                onPressed: () =>
+                                    widget.onOpenReceipt(receipt.id),
+                              ),
                             ),
                           ),
-                        ),
+                          SecondaryActionButton(
+                            label: 'Wyczyść rachunki',
+                            icon: Icons.refresh_rounded,
+                            onPressed: widget.onClearAll,
+                          ),
+                          const SizedBox(height: 14),
+                          SettlementCard(settlement: settlement),
+                        ],
                       ],
                     ),
-                    if (_manualFormOpen) ...[
-                      const SizedBox(height: 14),
-                      ManualReceiptCard(
-                        members: household.members,
-                        onCancel: () => setState(() => _manualFormOpen = false),
-                        onSubmit: (input) async {
-                          final saved = await widget.onAddManualReceipt(input);
-                          if (saved && mounted) {
-                            setState(() => _manualFormOpen = false);
-                          }
-                          return saved;
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    if (household.receipts.isEmpty)
-                      EmptyState(
-                        importing: widget.importing,
-                        onImport: widget.onImport,
-                      )
-                    else ...[
-                      SectionHeader(
-                        title: 'Paragony',
-                        meta: household.receipts.length.toString(),
-                      ),
-                      const SizedBox(height: 10),
-                      ...household.receipts.map(
-                        (receipt) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: ReceiptListItem(
-                            receipt: receipt,
-                            members: household.members,
-                            onPressed: () => widget.onOpenReceipt(receipt.id),
-                          ),
-                        ),
-                      ),
-                      SecondaryActionButton(
-                        label: 'Wyczyść rachunki',
-                        icon: Icons.refresh_rounded,
-                        onPressed: widget.onClearAll,
-                      ),
-                      const SizedBox(height: 14),
-                      SettlementCard(settlement: settlement),
-                    ],
+                    ShoppingListsScreen(
+                      household: household,
+                      onAddItem: widget.onAddShoppingItem,
+                      onToggleItem: widget.onToggleShoppingItem,
+                      onDeleteItem: widget.onDeleteShoppingItem,
+                      onClearCompleted: widget.onClearCompletedShoppingItems,
+                    ),
                   ],
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: NavigationBar(
+              height: 66,
+              selectedIndex: _selectedTab,
+              onDestinationSelected: (index) =>
+                  setState(() => _selectedTab = index),
+              backgroundColor: AppColors.card,
+              indicatorColor: AppColors.primary,
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long_rounded),
+                  label: 'Rachunki',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.checklist_rounded),
+                  selectedIcon: Icon(Icons.shopping_cart_rounded),
+                  label: 'Listy zakupów',
+                ),
+              ],
+            ),
           ),
         ),
       ),

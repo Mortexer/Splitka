@@ -84,7 +84,7 @@ class _RoomDialogState extends State<RoomDialog> {
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'Bieżące rachunki zostaną dodane do mieszkania.',
+                      'Bieżące rachunki i listy zostaną dodane do mieszkania.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,

@@ -20,6 +20,76 @@ void main() {
     expect(find.text('Splitka'), findsOneWidget);
     expect(find.text('Importuj JSON'), findsOneWidget);
     expect(find.text('Brak paragonów'), findsOneWidget);
+    expect(find.text('Rachunki'), findsOneWidget);
+    expect(find.text('Listy zakupów'), findsOneWidget);
+  });
+
+  testWidgets('keeps a shared shopping list and separate member lists', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(const SplitkaApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Listy zakupów'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(ChoiceChip, 'Wspólna'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Danuś'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Kubuś'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('shopping-list-selector')),
+      const Offset(-220, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(ChoiceChip, 'Damian'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('shopping-list-selector')),
+      const Offset(220, 0),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('shopping-input-common')),
+      'Mleko',
+    );
+    await tester.tap(find.byTooltip('Dodaj do listy'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mleko'), findsOneWidget);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    expect(find.text('Usuń kupione (1)'), findsOneWidget);
+
+    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Kubuś'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Kubuś'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('shopping-input-kubus')),
+      'Kawa',
+    );
+    await tester.tap(find.byTooltip('Dodaj do listy'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kawa'), findsOneWidget);
+    expect(find.text('Mleko'), findsNothing);
+
+    await tester.drag(
+      find.byKey(const ValueKey('shopping-list-selector')),
+      const Offset(600, 0),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Wspólna'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mleko'), findsOneWidget);
+    await tester.tap(find.text('Usuń kupione (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Lista jest pusta'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('creates a receipt, handles Android back and confirms deletion', (
