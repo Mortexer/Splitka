@@ -40,7 +40,7 @@ class _RoomDialogState extends State<RoomDialog> {
       child: AlertDialog(
         scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        title: const Text('Mieszkanie'),
+        title: const Text('Udostępnianie grupy'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
           child: Column(
@@ -78,13 +78,13 @@ class _RoomDialogState extends State<RoomDialog> {
                       ? null
                       : () => _run(controller.createCloudRoom),
                   icon: const Icon(Icons.add_home_outlined),
-                  label: const Text('Utwórz mieszkanie'),
+                  label: const Text('Utwórz grupę w chmurze'),
                 ),
                 if (controller.household.receipts.isNotEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'Bieżące rachunki i listy zostaną dodane do mieszkania.',
+                      'Bieżące rachunki i listy zostaną dodane do grupy.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -112,7 +112,7 @@ class _RoomDialogState extends State<RoomDialog> {
                     ? null
                     : () => _run(() => controller.joinCloudRoom(_code.text)),
                 icon: const Icon(Icons.login_rounded),
-                label: const Text('Dołącz do mieszkania'),
+                label: const Text('Dołącz do grupy'),
               ),
               if (_working) ...[
                 const SizedBox(height: 12),
@@ -132,7 +132,7 @@ class _RoomDialogState extends State<RoomDialog> {
           if (controller.isCloudRoom)
             TextButton(
               onPressed: _working ? null : () => _run(controller.useLocalMode),
-              child: const Text('Rachunki lokalne'),
+              child: const Text('Tryb lokalny'),
             ),
           TextButton(
             onPressed: _working ? null : () => Navigator.of(context).pop(),

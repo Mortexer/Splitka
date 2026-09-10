@@ -37,7 +37,8 @@ function roomData(uid, id = roomId, inviteCode = code) {
     schemaVersion: 2, roomCode: id, inviteCode, createdBy: uid, updatedBy: uid,
     updatedAt: serverTimestamp(), revision: 1,
     household: {
-      id, members: [{ id: 'danus', name: 'Danus', color: '#64D487' }],
+      id, name: 'Stancja',
+      members: [{ id: 'danus', name: 'Danus', color: '#64D487' }],
       receipts: [], shoppingLists: {}, updatedAt: 1,
     },
   };
@@ -135,6 +136,44 @@ test('groups support up to twenty editable participants', async () => {
     'household.members': [...members, { id: 'member-20', name: 'Too many', color: '#499FE3' }],
     revision: 3, updatedBy: 'owner', updatedAt: serverTimestamp(),
   }));
+});
+
+test('group name and participants can be edited but group names are bounded', async () => {
+  await createRoom();
+  const client = db('owner');
+  await assertSucceeds(updateDoc(doc(client, 'households', roomId), {
+    'household.name': 'Wyjazd w góry',
+    'household.members': [
+      { id: 'danus', name: 'Danuś', color: '#45B164', active: true },
+      { id: 'ola', name: 'Ola', color: '#499FE3', active: true },
+    ],
+    revision: 2, updatedBy: 'owner', updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(client, 'households', roomId), {
+    'household.name': '',
+    revision: 3, updatedBy: 'owner', updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(client, 'households', roomId), {
+    'household.name': 'x'.repeat(41),
+    revision: 3, updatedBy: 'owner', updatedAt: serverTimestamp(),
+  }));
+});
+
+test('legacy clients can still create a group without the name field', async () => {
+  const legacyRoom = 'legacy-room';
+  const legacyCode = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  const client = db('legacy-owner');
+  const data = roomData('legacy-owner', legacyRoom, legacyCode);
+  delete data.household.name;
+  const batch = writeBatch(client);
+  batch.set(doc(client, 'households', legacyRoom), data);
+  batch.set(doc(client, 'households', legacyRoom, 'members', 'legacy-owner'), {
+    uid: 'legacy-owner', inviteCode: legacyCode, joinedAt: serverTimestamp(),
+  });
+  batch.set(doc(client, 'invites', legacyCode), {
+    roomId: legacyRoom, createdBy: 'legacy-owner', createdAt: serverTimestamp(),
+  });
+  await assertSucceeds(batch.commit());
 });
 
 test('joining can transactionally check an absent own membership', async () => {

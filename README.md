@@ -7,7 +7,8 @@ Domyslne osoby: Danus, Kubus, Damian. Android i iOS, bez Expo.
 
 - Importuje JSON paragonu Biedronki oraz reczne rachunki i produkty.
 - Dzieli kazda pozycje na wybrane osoby albo pomija ja w rozliczeniu.
-- Ma osobna zakladke list zakupow: wspolna oraz po jednej dla kazdego domownika.
+- Ma osobna zakladke list zakupow: wspolna oraz po jednej dla kazdej aktywnej osoby.
+- Pozwala nazwac grupe oraz dodawac, edytowac i dezaktywowac do 20 osob.
 - Pozwala dodawac, odhaczac i usuwac produkty z list zakupow.
 - Kaucje pokazuje informacyjnie, zwroty opakowan zmniejszaja kwote.
 - Liczy w groszach, kto komu ma oddac pieniadze.
@@ -32,9 +33,9 @@ flutter devices
 flutter run -d ID_URZADZENIA
 ```
 
-Nowa instalacja zaczyna z rachunkami lokalnymi. Przycisk Mieszkanie pozwala
-utworzyc wspolne mieszkanie lub dolaczyc do istniejacego.
-Tylko jedna osoba tworzy mieszkanie; pozostali wklejaja jej kod.
+Nowa instalacja zaczyna z rachunkami lokalnymi. Przycisk Grupa pozwala zarzadzac
+uczestnikami, a sekcja udostepniania tworzy grupe w chmurze lub dolacza do niej.
+Tylko jedna osoba tworzy grupe w chmurze; pozostali wklejaja jej kod.
 [Firebase: konfiguracja, wdrozenie i testy](docs/FIREBASE.md).
 
 ## APK na Androida

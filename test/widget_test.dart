@@ -6,6 +6,7 @@ import 'package:splitka_flutter/domain/models.dart';
 import 'package:splitka_flutter/domain/settlements.dart';
 import 'package:splitka_flutter/state/household_controller.dart';
 import 'package:splitka_flutter/ui/common_widgets.dart';
+import 'package:splitka_flutter/ui/group_settings_screen.dart';
 import 'package:splitka_flutter/ui/receipt_detail_screen.dart';
 import 'package:splitka_flutter/ui/room_dialog.dart';
 
@@ -223,6 +224,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('manages group name and participants on a small screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(const SplitkaApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('open-group-settings')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GroupSettingsScreen), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('edit-group-name')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('group-name-input')),
+      'Wyjazd w góry',
+    );
+    await tester.tap(find.text('Zapisz'));
+    await tester.pumpAndSettle();
+    expect(find.text('Wyjazd w góry'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Dodaj osobę'));
+    await tester.tap(find.text('Dodaj osobę'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('member-name-input')),
+      'Ola',
+    );
+    await tester.tap(find.text('Zapisz'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ola'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final size in [const Size(320, 700), const Size(390, 844)]) {
     testWidgets(
       'invitation dialog fits $size and shows invalid code feedback',
@@ -242,7 +281,7 @@ void main() {
           ),
         );
         await tester.enterText(find.byType(TextField), 'stancja');
-        await tester.tap(find.text('Dołącz do mieszkania'));
+        await tester.tap(find.text('Dołącz do grupy'));
         await tester.pumpAndSettle();
         expect(find.textContaining('Wklej pełny kod'), findsOneWidget);
         expect(controller.isCloudRoom, isFalse);

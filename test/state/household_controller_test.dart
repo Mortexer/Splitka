@@ -232,6 +232,26 @@ void main() {
     expect(controller.syncState, SyncState.offline);
   });
 
+  test('group and participant edits are persisted locally', () async {
+    await controller.boot();
+
+    expect(await controller.renameCurrentGroup('Wyjazd'), isTrue);
+    expect(await controller.addMember('Ola', 0xFF499FE3), isTrue);
+    final olaId = controller.household.members.last.id;
+    expect(
+      await controller.updateMember(olaId, 'Aleksandra', 0xFFF59740),
+      isTrue,
+    );
+    expect(await controller.setMemberActive(olaId, false), isTrue);
+
+    final saved = await LocalStore().loadHouseholdSnapshot(defaultRoomCode);
+    final ola = saved.household.members.last;
+    expect(saved.household.name, 'Wyjazd');
+    expect(ola.id, olaId);
+    expect(ola.name, 'Aleksandra');
+    expect(ola.active, isFalse);
+  });
+
   test(
     'resumes the saved cloud room and revision without overwriting it',
     () async {

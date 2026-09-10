@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import '../domain/groups.dart';
 import '../domain/models.dart';
 import '../storage/firebase_store.dart';
 import '../storage/local_store.dart';
@@ -70,6 +71,34 @@ class HouseholdController extends ChangeNotifier {
 
   Future<bool> joinCloudRoom(String code) {
     return _changeRoom(() => _firebaseStore.joinHousehold(code));
+  }
+
+  Future<bool> renameCurrentGroup(String name) {
+    return commit((current) => renameGroup(current, name));
+  }
+
+  Future<bool> addMember(String name, int color) {
+    return commit(
+      (current) => addGroupMember(
+        current,
+        createGroupMember(current, name, color: color),
+      ),
+    );
+  }
+
+  Future<bool> updateMember(String memberId, String name, int color) {
+    return commit(
+      (current) =>
+          updateGroupMember(current, memberId, name: name, color: color),
+    );
+  }
+
+  Future<bool> setMemberActive(String memberId, bool active) {
+    return commit((current) => setGroupMemberActive(current, memberId, active));
+  }
+
+  Future<bool> removeMember(String memberId) {
+    return commit((current) => removeGroupMember(current, memberId));
   }
 
   Future<bool> _changeRoom(
@@ -196,7 +225,7 @@ class HouseholdController extends ChangeNotifier {
   Future<void> _connectRemote(int generation) async {
     await _remoteSubscription?.cancel();
     if (!await _firebaseStore.initializeIfConfigured()) {
-      throw StateError('Połączenie z mieszkaniem jest niedostępne.');
+      throw StateError('Połączenie z grupą jest niedostępne.');
     }
     if (!_isCurrent(generation)) return;
     _remoteSubscription = _firebaseStore
@@ -205,9 +234,7 @@ class HouseholdController extends ChangeNotifier {
           (change) {
             if (!_isCurrent(generation)) return;
             if (change == null) {
-              _markError(
-                const FormatException('To mieszkanie już nie istnieje.'),
-              );
+              _markError(const FormatException('Ta grupa już nie istnieje.'));
               return;
             }
             _acceptRemote(change, generation);
@@ -275,11 +302,10 @@ String describeConnectionError(Object error) {
   if (error is FormatException) return error.message;
   if (error is FirebaseException) {
     return switch (error.code) {
-      'permission-denied' =>
-        'Brak dostępu do mieszkania. Sprawdź kod zaproszenia.',
+      'permission-denied' => 'Brak dostępu do grupy. Sprawdź kod zaproszenia.',
       'unavailable' || 'network-request-failed' || 'deadline-exceeded' =>
         'Brak połączenia. Zmiana nie została zapisana. Spróbuj ponownie.',
-      'operation-not-allowed' => 'Nie można teraz połączyć z mieszkaniem.',
+      'operation-not-allowed' => 'Nie można teraz połączyć z grupą.',
       'aborted' => 'Rachunek właśnie się zmienił. Spróbuj ponownie.',
       _ => 'Nie udało się zapisać zmiany. Spróbuj ponownie.',
     };

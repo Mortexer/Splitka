@@ -322,10 +322,12 @@ class Household {
     required this.members,
     required this.receipts,
     required this.updatedAt,
+    this.name = defaultGroupName,
     this.shoppingLists = const {},
   });
 
   final String id;
+  final String name;
   final List<Person> members;
   final List<Receipt> receipts;
   final int updatedAt;
@@ -336,6 +338,7 @@ class Household {
 
   Household copyWith({
     String? id,
+    String? name,
     List<Person>? members,
     List<Receipt>? receipts,
     int? updatedAt,
@@ -343,6 +346,7 @@ class Household {
   }) {
     return Household(
       id: id ?? this.id,
+      name: name ?? this.name,
       members: members ?? this.members,
       receipts: receipts ?? this.receipts,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -353,6 +357,7 @@ class Household {
   factory Household.fromJson(Map<String, dynamic> json, {String? fallbackId}) {
     return Household(
       id: json['id'] as String? ?? fallbackId ?? defaultRoomCode,
+      name: _nonEmptyString(json['name'], defaultGroupName),
       members: _mapList(
         json['members'],
         Person.fromJson,
@@ -369,6 +374,7 @@ class Household {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'name': name,
       'members': members.map((person) => person.toJson()).toList(),
       'receipts': receipts.map((receipt) => receipt.toJson()).toList(),
       'updatedAt': updatedAt,
@@ -381,6 +387,7 @@ class Household {
 }
 
 const defaultRoomCode = 'stancja';
+const defaultGroupName = 'Stancja';
 const maxHouseholdMembers = 20;
 
 const defaultMembers = [
@@ -392,6 +399,7 @@ const defaultMembers = [
 Household createDefaultHousehold([String id = defaultRoomCode]) {
   return Household(
     id: id,
+    name: defaultGroupName,
     members: defaultMembers,
     receipts: const [],
     updatedAt: DateTime.now().millisecondsSinceEpoch,
@@ -483,4 +491,9 @@ int? _nullableIntFromJson(Object? value) {
   }
 
   return _intFromJson(value);
+}
+
+String _nonEmptyString(Object? value, String fallback) {
+  if (value is! String || value.trim().isEmpty) return fallback;
+  return value.trim();
 }

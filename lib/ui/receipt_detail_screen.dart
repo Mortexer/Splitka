@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../domain/money.dart';
+import '../domain/groups.dart';
 import '../domain/models.dart';
 import '../domain/receipts.dart';
 import '../domain/settlements.dart';
@@ -47,6 +48,10 @@ class ReceiptDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totals = getReceiptTotals(receipt);
+    final participants = receiptParticipants(household, receipt);
+    final payerCandidates = household.members
+        .where((person) => person.active || person.id == receipt.payerId)
+        .toList(growable: false);
 
     return PopScope(
       canPop: false,
@@ -70,18 +75,18 @@ class ReceiptDetailScreen extends StatelessWidget {
                     children: [
                       _PayerSection(
                         receipt: receipt,
-                        members: household.members,
+                        members: payerCandidates,
                         onSetPayer: onSetPayer,
                       ),
                       const SizedBox(height: 14),
                       _TotalsSection(
                         receipt: receipt,
                         totals: totals,
-                        members: household.members,
+                        members: participants,
                       ),
                       const SizedBox(height: 14),
                       AddItemForm(
-                        members: household.members,
+                        members: household.activeMembers,
                         onAddItem: onAddItem,
                       ),
                       const SizedBox(height: 14),
@@ -91,17 +96,25 @@ class ReceiptDetailScreen extends StatelessWidget {
                         onClearAssignments: onClearProductAssignments,
                       ),
                       const SizedBox(height: 10),
-                      ...receipt.items.map(
-                        (item) => Padding(
+                      ...receipt.items.map((item) {
+                        final assignment = getAssignment(receipt, item.id);
+                        final itemParticipants = household.members
+                            .where(
+                              (person) =>
+                                  person.active ||
+                                  assignment.participantIds.contains(person.id),
+                            )
+                            .toList(growable: false);
+                        return Padding(
                           key: ValueKey(item.id),
                           padding: const EdgeInsets.only(bottom: 10),
                           child: ItemCard(
                             item: item,
-                            assignment: getAssignment(receipt, item.id),
-                            members: household.members,
+                            assignment: assignment,
+                            members: itemParticipants,
                             onAll: () => onSetItemParticipants(
                               item.id,
-                              household.members
+                              household.activeMembers
                                   .map((person) => person.id)
                                   .toList(),
                             ),
@@ -113,8 +126,8 @@ class ReceiptDetailScreen extends StatelessWidget {
                             onUpdate: (update) => onUpdateItem(item.id, update),
                             onDelete: () => onDeleteItem(item.id),
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                     ],
                   ),
                 ),

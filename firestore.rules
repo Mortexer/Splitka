@@ -28,9 +28,14 @@ service cloud.firestore {
         && data.revision is int && data.revision > 0
         && data.household is map
         && data.household.keys().hasOnly([
-          'id', 'members', 'receipts', 'shoppingLists', 'updatedAt'
+          'id', 'name', 'members', 'receipts', 'shoppingLists', 'updatedAt'
         ])
         && data.household.id == roomId
+        && (!data.household.keys().hasAny(['name']) || (
+          data.household.name is string
+          && data.household.name.size() >= 1
+          && data.household.name.size() <= 40
+        ))
         && data.household.members is list
         && data.household.members.size() >= 1
         && data.household.members.size() <= 20

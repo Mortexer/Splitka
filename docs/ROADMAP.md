@@ -15,6 +15,8 @@ Funkcje commitujemy osobno i wysylamy do Mortexer/Splitka.
 - Reguly czlonkostwa oraz transakcyjne zmiany online bez porownywania zegarow.
 - Dwie glowne zakladki: rachunki oraz listy zakupow; jedna lista wspolna i po
   jednej dla kazdego domownika, z dodawaniem, odhaczaniem i usuwaniem pozycji.
+- Dowolna nazwa grupy oraz zarzadzanie maksymalnie 20 osobami: dodawanie,
+  zmiana nazwy i koloru, dezaktywowanie i bezpieczne usuwanie.
 - Testy kontrolera, formularzy i regul, w tym jednoczesny zapis dwoch klientow.
 
 Nowa instalacja przechowuje rachunki lokalnie, dopoki nie utworzysz mieszkania
@@ -157,7 +159,6 @@ w zadnym z powyzszych scenariuszy. Wyniki zapisac w repo z wersja aplikacji.
 ## Pozniej, poza wymaganym pierwszym wydaniem
 
 - Eksport/import kopii mieszkania do JSON na wypadek zmiany telefonu.
-- Edycja skladu mieszkania i ewentualna czwarta osoba.
 - Udostepnianie paragonu do Splitki z menu systemowego.
 - Czastkowe splaty, powiadomienia i dalsze usprawnienia, jesli beda potrzebne.
 

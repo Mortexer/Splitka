@@ -1,5 +1,6 @@
 import 'models.dart';
 import 'money.dart';
+import 'groups.dart';
 
 class ReceiptTotals {
   const ReceiptTotals({
@@ -128,11 +129,10 @@ Map<String, int> calculateReceiptShares(Receipt receipt) {
 }
 
 Settlement calculateSettlement(Household household) {
-  final memberById = {
-    for (final person in household.members) person.id: person,
-  };
-  final paid = {for (final person in household.members) person.id: 0};
-  final shares = {for (final person in household.members) person.id: 0};
+  final participants = settlementParticipants(household);
+  final memberById = {for (final person in participants) person.id: person};
+  final paid = {for (final person in participants) person.id: 0};
+  final shares = {for (final person in participants) person.id: 0};
   var includedCents = 0;
   var unassignedCount = 0;
 
@@ -149,7 +149,7 @@ Settlement calculateSettlement(Household household) {
     }
   }
 
-  final balances = household.members.map((person) {
+  final balances = participants.map((person) {
     final paidCents = paid[person.id] ?? 0;
     final shareCents = shares[person.id] ?? 0;
 

@@ -7,7 +7,7 @@ import '../domain/settlements.dart';
 import '../domain/shopping_lists.dart';
 import '../state/household_controller.dart';
 import 'common_widgets.dart';
-import 'room_dialog.dart';
+import 'group_settings_screen.dart';
 import 'shopping_lists_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -70,10 +70,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _Header(
                 controller: controller,
                 selectedTab: _selectedTab,
-                onRoomPressed: () => showDialog<void>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) => RoomDialog(controller: controller),
+                onRoomPressed: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (_) => GroupSettingsScreen(controller: controller),
+                  ),
                 ),
               ),
               Expanded(
@@ -278,9 +278,7 @@ class _Header extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        controller.isCloudRoom
-                            ? 'WSPÓLNE MIESZKANIE'
-                            : 'STANCJA',
+                        household.name.toUpperCase(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -300,9 +298,8 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  tooltip: controller.isCloudRoom
-                      ? 'Mieszkanie'
-                      : 'Połącz mieszkanie',
+                  key: const ValueKey('open-group-settings'),
+                  tooltip: 'Zarządzaj grupą',
                   onPressed: controller.busy ? null : onRoomPressed,
                   icon: const Icon(Icons.home_outlined, size: 19),
                   style: IconButton.styleFrom(

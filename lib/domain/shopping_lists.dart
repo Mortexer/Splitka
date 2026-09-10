@@ -7,7 +7,13 @@ const commonShoppingListId = 'common';
 List<String> shoppingListIds(Household household) {
   return [
     commonShoppingListId,
-    ...household.members.map((member) => member.id),
+    ...household.members
+        .where(
+          (member) =>
+              member.active ||
+              (household.shoppingLists[member.id] ?? const []).isNotEmpty,
+        )
+        .map((member) => member.id),
   ];
 }
 
