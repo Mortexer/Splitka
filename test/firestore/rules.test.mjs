@@ -38,7 +38,7 @@ function roomData(uid, id = roomId, inviteCode = code) {
     updatedAt: serverTimestamp(), revision: 1,
     household: {
       id, members: [{ id: 'danus', name: 'Danus', color: '#64D487' }],
-      receipts: [], updatedAt: 1,
+      receipts: [], shoppingLists: {}, updatedAt: 1,
     },
   };
 }
@@ -105,6 +105,22 @@ test('a known invite lets a second roommate join and edit with equal rights', as
   assert.equal(result.data().household.receipts.length, 1);
 });
 
+test('roommates can update shopping lists but malformed lists are rejected', async () => {
+  await createRoom();
+  await join('roommate');
+  const client = db('roommate');
+  await assertSucceeds(updateDoc(doc(client, 'households', roomId), {
+    'household.shoppingLists': {
+      common: [{ id: 'milk', name: 'Milk', completed: false, createdAt: 1 }],
+    },
+    revision: 2, updatedBy: 'roommate', updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(client, 'households', roomId), {
+    'household.shoppingLists': 'invalid',
+    revision: 3, updatedBy: 'roommate', updatedAt: serverTimestamp(),
+  }));
+});
+
 test('joining can transactionally check an absent own membership', async () => {
   await createRoom();
   const client = db('roommate');
@@ -145,6 +161,7 @@ test('stale revisions, tampered identities and malformed records are rejected', 
     { ...base, inviteCode: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
     { ...base, 'household.id': 'another-room' },
     { ...base, 'household.members': [] }, { ...base, 'household.receipts': 'invalid' },
+    { ...base, 'household.shoppingLists': 'invalid' },
     { ...base, schemaVersion: 1 }, { ...base, extra: true },
   ]) {
     await assertFails(updateDoc(doc(client, 'households', roomId), invalid));

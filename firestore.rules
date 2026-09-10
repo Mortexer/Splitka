@@ -27,13 +27,17 @@ service cloud.firestore {
         && data.updatedAt == request.time
         && data.revision is int && data.revision > 0
         && data.household is map
-        && data.household.keys().hasOnly(['id', 'members', 'receipts', 'updatedAt'])
+        && data.household.keys().hasOnly([
+          'id', 'members', 'receipts', 'shoppingLists', 'updatedAt'
+        ])
         && data.household.id == roomId
         && data.household.members is list
         && data.household.members.size() >= 1
         && data.household.members.size() <= 4
         && data.household.receipts is list
         && data.household.receipts.size() <= 500
+        && data.household.shoppingLists is map
+        && data.household.shoppingLists.size() <= 5
         && data.household.updatedAt is int;
     }
 

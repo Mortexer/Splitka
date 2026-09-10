@@ -36,6 +36,52 @@ class Person {
   }
 }
 
+class ShoppingItem {
+  const ShoppingItem({
+    required this.id,
+    required this.name,
+    required this.completed,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String name;
+  final bool completed;
+  final int createdAt;
+
+  ShoppingItem copyWith({
+    String? id,
+    String? name,
+    bool? completed,
+    int? createdAt,
+  }) {
+    return ShoppingItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      completed: completed ?? this.completed,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  factory ShoppingItem.fromJson(Map<String, dynamic> json) {
+    return ShoppingItem(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      completed: json['completed'] as bool? ?? false,
+      createdAt: _intFromJson(json['createdAt']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'completed': completed,
+      'createdAt': createdAt,
+    };
+  }
+}
+
 class ReceiptItem {
   const ReceiptItem({
     required this.id,
@@ -255,24 +301,28 @@ class Household {
     required this.members,
     required this.receipts,
     required this.updatedAt,
+    this.shoppingLists = const {},
   });
 
   final String id;
   final List<Person> members;
   final List<Receipt> receipts;
   final int updatedAt;
+  final Map<String, List<ShoppingItem>> shoppingLists;
 
   Household copyWith({
     String? id,
     List<Person>? members,
     List<Receipt>? receipts,
     int? updatedAt,
+    Map<String, List<ShoppingItem>>? shoppingLists,
   }) {
     return Household(
       id: id ?? this.id,
       members: members ?? this.members,
       receipts: receipts ?? this.receipts,
       updatedAt: updatedAt ?? this.updatedAt,
+      shoppingLists: shoppingLists ?? this.shoppingLists,
     );
   }
 
@@ -288,6 +338,7 @@ class Household {
         json['updatedAt'],
         fallback: DateTime.now().millisecondsSinceEpoch,
       ),
+      shoppingLists: _shoppingListsFromJson(json['shoppingLists']),
     );
   }
 
@@ -297,6 +348,10 @@ class Household {
       'members': members.map((person) => person.toJson()).toList(),
       'receipts': receipts.map((receipt) => receipt.toJson()).toList(),
       'updatedAt': updatedAt,
+      'shoppingLists': shoppingLists.map(
+        (key, items) =>
+            MapEntry(key, items.map((item) => item.toJson()).toList()),
+      ),
     };
   }
 }
@@ -315,6 +370,7 @@ Household createDefaultHousehold([String id = defaultRoomCode]) {
     members: defaultMembers,
     receipts: const [],
     updatedAt: DateTime.now().millisecondsSinceEpoch,
+    shoppingLists: const {},
   );
 }
 
@@ -353,6 +409,13 @@ List<String> _stringListFromJson(Object? value) {
   }
 
   return value.whereType<String>().toList();
+}
+
+Map<String, List<ShoppingItem>> _shoppingListsFromJson(Object? value) {
+  if (value is! Map) return {};
+  return Map<String, dynamic>.from(
+    value,
+  ).map((key, items) => MapEntry(key, _mapList(items, ShoppingItem.fromJson)));
 }
 
 int _colorFromJson(Object? value) {
