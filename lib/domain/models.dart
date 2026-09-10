@@ -17,22 +17,43 @@ enum ReceiptItemKind {
 }
 
 class Person {
-  const Person({required this.id, required this.name, required this.color});
+  const Person({
+    required this.id,
+    required this.name,
+    required this.color,
+    this.active = true,
+  });
 
   final String id;
   final String name;
   final int color;
+  final bool active;
+
+  Person copyWith({String? id, String? name, int? color, bool? active}) {
+    return Person(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      active: active ?? this.active,
+    );
+  }
 
   factory Person.fromJson(Map<String, dynamic> json) {
     return Person(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       color: _colorFromJson(json['color']),
+      active: json['active'] as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'id': id, 'name': name, 'color': _colorToJson(color)};
+    return {
+      'id': id,
+      'name': name,
+      'color': _colorToJson(color),
+      'active': active,
+    };
   }
 }
 
@@ -310,6 +331,9 @@ class Household {
   final int updatedAt;
   final Map<String, List<ShoppingItem>> shoppingLists;
 
+  List<Person> get activeMembers =>
+      members.where((person) => person.active).toList(growable: false);
+
   Household copyWith({
     String? id,
     List<Person>? members,
@@ -357,11 +381,12 @@ class Household {
 }
 
 const defaultRoomCode = 'stancja';
+const maxHouseholdMembers = 20;
 
 const defaultMembers = [
-  Person(id: 'danus', name: 'Danuś', color: 0xFF64D487),
-  Person(id: 'kubus', name: 'Kubuś', color: 0xFF7DA8FF),
-  Person(id: 'damian', name: 'Damian', color: 0xFFF1C763),
+  Person(id: 'danus', name: 'Danuś', color: 0xFF45B164),
+  Person(id: 'kubus', name: 'Kubuś', color: 0xFF499FE3),
+  Person(id: 'damian', name: 'Damian', color: 0xFFF59740),
 ];
 
 Household createDefaultHousehold([String id = defaultRoomCode]) {

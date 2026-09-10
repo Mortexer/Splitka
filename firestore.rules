@@ -33,11 +33,11 @@ service cloud.firestore {
         && data.household.id == roomId
         && data.household.members is list
         && data.household.members.size() >= 1
-        && data.household.members.size() <= 4
+        && data.household.members.size() <= 20
         && data.household.receipts is list
         && data.household.receipts.size() <= 500
         && data.household.shoppingLists is map
-        && data.household.shoppingLists.size() <= 5
+        && data.household.shoppingLists.size() <= 21
         && data.household.updatedAt is int;
     }
 
@@ -58,7 +58,6 @@ service cloud.firestore {
         && validRoom(request.resource.data, roomId)
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.inviteCode == resource.data.inviteCode
-        && request.resource.data.household.members == resource.data.household.members
         && request.resource.data.revision == resource.data.revision + 1;
 
       match /members/{uid} {

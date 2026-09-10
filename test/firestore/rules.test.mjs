@@ -121,6 +121,22 @@ test('roommates can update shopping lists but malformed lists are rejected', asy
   }));
 });
 
+test('groups support up to twenty editable participants', async () => {
+  await createRoom();
+  const client = db('owner');
+  const members = Array.from({ length: 20 }, (_, index) => ({
+    id: `member-${index}`, name: `Person ${index + 1}`, color: '#45B164', active: true,
+  }));
+  await assertSucceeds(updateDoc(doc(client, 'households', roomId), {
+    'household.members': members,
+    revision: 2, updatedBy: 'owner', updatedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(client, 'households', roomId), {
+    'household.members': [...members, { id: 'member-20', name: 'Too many', color: '#499FE3' }],
+    revision: 3, updatedBy: 'owner', updatedAt: serverTimestamp(),
+  }));
+});
+
 test('joining can transactionally check an absent own membership', async () => {
   await createRoom();
   const client = db('roommate');

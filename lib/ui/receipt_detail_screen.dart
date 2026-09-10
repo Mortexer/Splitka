@@ -260,19 +260,10 @@ class _PayerSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: members.map((person) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 7),
-                  child: PersonChoice(
-                    person: person,
-                    selected: receipt.payerId == person.id,
-                    onPressed: () => onSetPayer(person.id),
-                  ),
-                ),
-              );
-            }).toList(),
+          PersonSelector(
+            members: members,
+            selectedId: receipt.payerId,
+            onSelected: onSetPayer,
           ),
         ],
       ),

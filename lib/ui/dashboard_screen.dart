@@ -120,7 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         if (_manualFormOpen) ...[
                           const SizedBox(height: 14),
                           ManualReceiptCard(
-                            members: household.members,
+                            members: household.activeMembers,
                             onCancel: () =>
                                 setState(() => _manualFormOpen = false),
                             onSubmit: (input) async {
@@ -154,7 +154,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                           ),
-                          SettlementCard(settlement: settlement),
+                          SettlementCard(
+                            settlement: settlement,
+                            members: household.members,
+                          ),
                         ],
                       ],
                     ),
@@ -321,30 +324,13 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  SizedBox(
-                    width: 54,
-                    height: 30,
-                    child: Stack(
-                      children: [
-                        for (
-                          var index = 0;
-                          index < household.members.length;
-                          index += 1
-                        )
-                          Positioned(
-                            left: index * 17,
-                            child: PersonAvatar(
-                              person: household.members[index],
-                              size: 28,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                  MemberAvatarStack(members: household.activeMembers),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      household.members.map((person) => person.name).join(', '),
+                      household.activeMembers
+                          .map((person) => person.name)
+                          .join(', '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -389,7 +375,9 @@ class _ManualReceiptCardState extends State<ManualReceiptCard> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: 'Rachunek ręczny');
-    _payerId = widget.members.isNotEmpty ? widget.members.first.id : 'danus';
+    _payerId = widget.members.isNotEmpty
+        ? widget.members.first.id
+        : defaultMembers.first.id;
   }
 
   @override
@@ -427,19 +415,10 @@ class _ManualReceiptCardState extends State<ManualReceiptCard> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: widget.members.map((person) {
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 7),
-                  child: PersonChoice(
-                    person: person,
-                    selected: person.id == _payerId,
-                    onPressed: () => setState(() => _payerId = person.id),
-                  ),
-                ),
-              );
-            }).toList(),
+          PersonSelector(
+            members: widget.members,
+            selectedId: _payerId,
+            onSelected: (personId) => setState(() => _payerId = personId),
           ),
           const SizedBox(height: 12),
           Row(

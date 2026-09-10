@@ -165,7 +165,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
 
       final imported = parseBiedronkaReceipt(
         utf8.decode(bytes),
-        _controller.household.members,
+        _controller.household.activeMembers,
       );
 
       final saved = await _controller.commit(
@@ -205,7 +205,10 @@ class _SplitkaAppState extends State<SplitkaApp> {
   }
 
   Future<bool> _addManualReceipt(ManualReceiptInput input) async {
-    final receipt = createManualReceipt(_controller.household.members, input);
+    final receipt = createManualReceipt(
+      _controller.household.activeMembers,
+      input,
+    );
 
     final saved = await _controller.commit(
       (household) =>
@@ -311,7 +314,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
   }
 
   Future<void> _assignAllProducts(String receiptId) async {
-    final allMemberIds = _controller.household.members
+    final allMemberIds = _controller.household.activeMembers
         .map((person) => person.id)
         .toList();
 
@@ -387,7 +390,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
   }
 
   Future<void> _toggleItemSkipped(String receiptId, String itemId) async {
-    final memberIds = _controller.household.members
+    final memberIds = _controller.household.activeMembers
         .map((person) => person.id)
         .toList();
 
@@ -475,7 +478,7 @@ class _SplitkaAppState extends State<SplitkaApp> {
 
   List<String> _normalizeParticipants(List<String> participantIds) {
     final selected = participantIds.toSet();
-    return _controller.household.members
+    return _controller.household.activeMembers
         .where((person) => selected.contains(person.id))
         .map((person) => person.id)
         .toList();

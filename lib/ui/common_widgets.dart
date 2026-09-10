@@ -335,6 +335,103 @@ class PersonChoice extends StatelessWidget {
   }
 }
 
+class PersonSelector extends StatelessWidget {
+  const PersonSelector({
+    super.key,
+    required this.members,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  final List<Person> members;
+  final String selectedId;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (members.length <= 3) {
+      return Row(
+        children: [
+          for (var index = 0; index < members.length; index++) ...[
+            if (index > 0) const SizedBox(width: 7),
+            Expanded(child: _choice(members[index])),
+          ],
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: members.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 7),
+        itemBuilder: (_, index) =>
+            SizedBox(width: 112, child: _choice(members[index])),
+      ),
+    );
+  }
+
+  Widget _choice(Person person) {
+    return PersonChoice(
+      person: person,
+      selected: selectedId == person.id,
+      onPressed: () => onSelected(person.id),
+    );
+  }
+}
+
+class MemberAvatarStack extends StatelessWidget {
+  const MemberAvatarStack({
+    super.key,
+    required this.members,
+    this.maxVisible = 3,
+  });
+
+  final List<Person> members;
+  final int maxVisible;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = members.take(maxVisible).toList();
+    final hiddenCount = members.length - visible.length;
+    final stackWidth = visible.isEmpty
+        ? 0.0
+        : 28.0 + (visible.length - 1) * 17.0;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: stackWidth,
+          height: 30,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              for (var index = 0; index < visible.length; index++)
+                Positioned(
+                  left: index * 17,
+                  child: PersonAvatar(person: visible[index], size: 28),
+                ),
+            ],
+          ),
+        ),
+        if (hiddenCount > 0) ...[
+          const SizedBox(width: 6),
+          Text(
+            '+$hiddenCount',
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class PersonChip extends StatelessWidget {
   const PersonChip({
     super.key,
@@ -548,9 +645,14 @@ class StatusPill extends StatelessWidget {
 enum PillTone { green, amber, muted }
 
 class SettlementCard extends StatelessWidget {
-  const SettlementCard({super.key, required this.settlement});
+  const SettlementCard({
+    super.key,
+    required this.settlement,
+    required this.members,
+  });
 
   final Settlement settlement;
+  final List<Person> members;
 
   @override
   Widget build(BuildContext context) {
@@ -563,64 +665,7 @@ class SettlementCard extends StatelessWidget {
             icon: Icons.account_balance_wallet_rounded,
           ),
           const SizedBox(height: 12),
-          Row(
-            children: settlement.balances.map((balance) {
-              final positive = balance.balanceCents > 0;
-              final negative = balance.balanceCents < 0;
-              final person = Person(
-                id: balance.personId,
-                name: balance.name,
-                color: personDisplayColorById(balance.personId).toARGB32(),
-              );
-              return Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.muted,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    children: [
-                      PersonAvatar(person: person, size: 28),
-                      const SizedBox(height: 5),
-                      Text(
-                        balance.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        balance.balanceCents == 0
-                            ? '—'
-                            : '${positive ? '+' : '−'}${formatMoney(balance.balanceCents.abs())}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: positive
-                              ? AppColors.primary
-                              : negative
-                              ? AppColors.danger
-                              : AppColors.text,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+          _BalanceStrip(settlement: settlement, members: members),
           const SizedBox(height: 12),
           if (settlement.transfers.isEmpty)
             Container(
@@ -665,12 +710,10 @@ class SettlementCard extends StatelessWidget {
                   child: Row(
                     children: [
                       PersonAvatar(
-                        person: Person(
-                          id: transfer.fromPersonId,
-                          name: transfer.fromName,
-                          color: personDisplayColorById(
-                            transfer.fromPersonId,
-                          ).toARGB32(),
+                        person: _personFor(
+                          members,
+                          transfer.fromPersonId,
+                          transfer.fromName,
                         ),
                         size: 24,
                       ),
@@ -682,12 +725,10 @@ class SettlementCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 7),
                       PersonAvatar(
-                        person: Person(
-                          id: transfer.toPersonId,
-                          name: transfer.toName,
-                          color: personDisplayColorById(
-                            transfer.toPersonId,
-                          ).toARGB32(),
+                        person: _personFor(
+                          members,
+                          transfer.toPersonId,
+                          transfer.toName,
                         ),
                         size: 24,
                       ),
@@ -735,6 +776,116 @@ class SettlementCard extends StatelessWidget {
   }
 }
 
+class _BalanceStrip extends StatelessWidget {
+  const _BalanceStrip({required this.settlement, required this.members});
+
+  final Settlement settlement;
+  final List<Person> members;
+
+  @override
+  Widget build(BuildContext context) {
+    if (settlement.balances.length <= 3) {
+      return Row(
+        children: [
+          for (var index = 0; index < settlement.balances.length; index++) ...[
+            if (index > 0) const SizedBox(width: 8),
+            Expanded(
+              child: _BalanceTile(
+                balance: settlement.balances[index],
+                person: _personFor(
+                  members,
+                  settlement.balances[index].personId,
+                  settlement.balances[index].name,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 98,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: settlement.balances.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, index) {
+          final balance = settlement.balances[index];
+          return SizedBox(
+            width: 92,
+            child: _BalanceTile(
+              balance: balance,
+              person: _personFor(members, balance.personId, balance.name),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BalanceTile extends StatelessWidget {
+  const _BalanceTile({required this.balance, required this.person});
+
+  final PersonBalance balance;
+  final Person person;
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = balance.balanceCents > 0;
+    final negative = balance.balanceCents < 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppColors.muted,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          PersonAvatar(person: person, size: 28),
+          const SizedBox(height: 4),
+          Text(
+            balance.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            balance.balanceCents == 0
+                ? '—'
+                : '${positive ? '+' : '−'}${formatMoney(balance.balanceCents.abs())}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: positive
+                  ? AppColors.primary
+                  : negative
+                  ? AppColors.danger
+                  : AppColors.text,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Person _personFor(List<Person> members, String id, String name) {
+  for (final person in members) {
+    if (person.id == id) return person;
+  }
+  return Person(id: id, name: name, color: AppColors.primary.toARGB32());
+}
+
 String initials(String name) {
   final words = name
       .trim()
@@ -748,24 +899,18 @@ String initials(String name) {
   return '$first$second'.toUpperCase();
 }
 
-Color personDisplayColor(Person person) => personDisplayColorById(person.id);
-
-Color personDisplayColorById(String personId) {
-  return switch (personId) {
-    'danus' => AppColors.danus,
-    'kubus' => AppColors.kubus,
-    'damian' => AppColors.damian,
-    _ => AppColors.primary,
-  };
-}
+Color personDisplayColor(Person person) => Color(person.color);
 
 String personInitials(Person person) {
-  return switch (person.id) {
-    'danus' => 'Da',
-    'kubus' => 'Ku',
-    'damian' => 'Dm',
-    _ => initials(person.name),
-  };
+  final name = person.name.trim();
+  if (name.isEmpty) return '?';
+  final words = name.split(RegExp(r'\s+'));
+  if (words.length > 1) {
+    return '${words.first[0]}${words.last[0]}'.toUpperCase();
+  }
+  final end = name.length < 2 ? 1 : 2;
+  final short = name.substring(0, end).toLowerCase();
+  return '${short[0].toUpperCase()}${short.substring(1)}';
 }
 
 String formatReceiptDate(String? value) {

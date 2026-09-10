@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:splitka_flutter/main.dart';
 import 'package:splitka_flutter/domain/models.dart';
+import 'package:splitka_flutter/domain/settlements.dart';
 import 'package:splitka_flutter/state/household_controller.dart';
 import 'package:splitka_flutter/ui/common_widgets.dart';
 import 'package:splitka_flutter/ui/receipt_detail_screen.dart';
@@ -167,6 +168,58 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Chleb'), findsOneWidget);
     expect(find.text('12,50'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('participant controls support a larger group on a small screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final members = List.generate(
+      8,
+      (index) => Person(
+        id: 'member-$index',
+        name: 'Osoba ${index + 1}',
+        color: 0xFF45B164 + index * 0x00030705,
+      ),
+    );
+    final household = Household(
+      id: 'trip',
+      members: members,
+      receipts: const [],
+      updatedAt: 1,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                PersonSelector(
+                  members: members,
+                  selectedId: members.first.id,
+                  onSelected: (_) {},
+                ),
+                const SizedBox(height: 12),
+                SettlementCard(
+                  settlement: calculateSettlement(household),
+                  members: members,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Osoba 1'), findsWidgets);
+    expect(find.byType(ListView), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 

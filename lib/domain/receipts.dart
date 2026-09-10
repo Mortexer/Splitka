@@ -48,7 +48,9 @@ Receipt createManualReceipt(List<Person> members, ManualReceiptInput input) {
     storeName: title,
     boughtAt: now.toIso8601String(),
     importedAt: now.toIso8601String(),
-    payerId: input.payerId ?? (members.isNotEmpty ? members.first.id : 'danus'),
+    payerId:
+        input.payerId ??
+        (members.isNotEmpty ? members.first.id : defaultMembers.first.id),
     items: const [],
     assignments: const {},
     grossCents: 0,
