@@ -1,7 +1,7 @@
 # Splitka: droga do wspolnego uzywania
 
-Stan po dodaniu ikony, 2026-09-09. Kazdy numer to oddzielne zadanie do zlecenia
-w jednym prompcie. Funkcje commitujemy osobno. Push po podlaczeniu repo GitHub.
+Stan 2026-09-10. Kazdy numer to oddzielne zadanie do zlecenia w jednym prompcie.
+Funkcje commitujemy osobno i wysylamy do Mortexer/Splitka.
 
 ## Co jest gotowe
 
@@ -10,16 +10,21 @@ w jednym prompcie. Funkcje commitujemy osobno. Push po podlaczeniu repo GitHub.
 - Reczne rachunki, edycja produktow, platnik i podzial pozycji na wybrane osoby.
 - Pomijanie pozycji, rozliczenia w groszach, lokalny zapis i kasowanie rachunkow.
 - Parser JSON Biedronki z rabatami, kaucjami i zwrotami oraz podstawowe testy.
-- Podstawa opcjonalnego zapisu i odczytu Firestore; nie jest to jeszcze
-  zweryfikowana synchronizacja do codziennego uzywania na kilku telefonach.
+- Konfiguracja Android/iOS dla Firebase splitka-18560, anonimowa tozsamosc,
+  tworzenie mieszkania i dolaczanie przez prywatny kod zaproszenia.
+- Reguly czlonkostwa oraz transakcyjne zmiany online bez porownywania zegarow.
+- Testy kontrolera, formularzy i regul, w tym jednoczesny zapis dwoch klientow.
 
-Apka bez konfiguracji Firebase przechowuje rachunki tylko na danym telefonie.
-Takie samo haslo pokoju na kilku instalacjach samo nie wlacza synchronizacji.
+Nowa instalacja przechowuje rachunki lokalnie, dopoki nie utworzysz mieszkania
+lub nie dolaczysz kodem. Zapis w mieszkaniu wymaga internetu; offline jest podglad.
 APK mozna budowac lokalnie. Kompilacja i uruchomienie iOS wymagaja Maca.
+Instrukcje konfiguracji i ograniczenia: [Firebase](FIREBASE.md).
 
 ## Kolejnosc prac
 
 ### 1. GitHub i automatyczne kontrole
+
+Status: repo podlaczone i kod wyslany. Pozostalo GitHub Actions oraz wydania APK.
 
 Podlaczyc wskazane przez uzytkownika repo do tego katalogu Flutter, wyslac
 istniejace male commity i dodac GitHub Actions uruchamiajace analize i testy.
@@ -27,9 +32,13 @@ Nie dolaczac starego projektu Expo, plikow podpisu, danych osobistych ani build/
 APK do pobrania publikowac osobno jako wydania, gdy podpis bedzie gotowy.
 
 Gotowe, gdy repo zawiera projekt Flutter i przechodzi pierwszy workflow.
-Wymaga adresu repo tworzonego przez uzytkownika.
+Repo: https://github.com/Mortexer/Splitka.
 
 ### 2. Domkniecie lokalnych przeplywow
+
+Status: poprawione konteksty dialogow, komunikaty po zapisie, Android Wstecz,
+potwierdzenie usuwania pozycji i zachowanie formularzy po bledzie.
+Testy widgetowe przechodza. Pozostal przeglad na fizycznym telefonie.
 
 Naprawic i przetestowac kontekst dialogow i komunikatow w lib/main.dart:
 stan SplitkaApp jest nad MaterialApp, a _confirm i _showSnack korzystaja
@@ -53,6 +62,10 @@ Rabat pomniejsza cene calej pozycji, a nie ponownie kazdej sztuki.
 
 ### 4. Konfiguracja Firebase dla obu platform
 
+Status: obie aplikacje zarejestrowane w splitka-18560, pliki SDK dolaczone,
+Anonymous Auth sprawdzone w prawdziwym projekcie. APK sie kompiluje.
+Pozostalo uruchomienie iOS na Macu i porownanie z Androidem.
+
 Utworzyc lub podlaczyc wskazany projekt Firebase na planie Spark, zarejestrowac
 Androida i iOS oraz utworzyc Firestore. Dodac szablony konfiguracji i powtarzalne
 komendy buildow. Rozdzielic identyfikatory aplikacji obu platform. Sprawdzic
@@ -64,6 +77,11 @@ konfiguracji sprawdzamy w konsoli, nie tylko na podstawie samego kodu.
 
 ### 5. Prywatny pokoj bez ekranu rejestracji
 
+Status: implementacja gotowa, 9 testow regul w emulatorze przechodzi.
+Reguly opublikowano w splitka-18560 i sprawdzono logowanie oraz blokade obcego
+klienta. Szczegoly sa w [Firebase](FIREBASE.md). Pozostal test zaproszenia
+na dwoch fizycznych telefonach.
+
 Dodac automatyczna anonimowa tozsamosc Firebase Auth, tworzenie mieszkania
 i dolaczanie przez losowy kod zaproszenia. Reguly Firestore maja sprawdzac
 czlonkostwo, format danych i rowne uprawnienia domownikow. Zablokowac obcym
@@ -74,17 +92,24 @@ Gotowe, gdy zaproszona trojka edytuje wspolne dane, a obcy klient nie ma dostepu
 
 ### 6. Synchronizacja bez gubienia zmian
 
-Zastapic nadpisywanie calego mieszkania zapisem mniejszych rekordow/operacji.
-Obecne saveHousehold zapisuje cala liste, a kontroler porownuje zegary telefonow.
-Obsluzyc rownoczesne edycje, konflikt tej samej pozycji, kolejke offline,
-ponawianie i usuwanie bez odtwarzania starych rachunkow. Odroznic dane z cache
-od potwierdzenia serwera i odciac odpowiedzi poprzedniego pokoju po jego zmianie.
-Dodac migracje lokalnych danych oraz testy dwoch klientow w emulatorze Firebase.
+Status: zapis online jest transakcyjny, ponawia operacje na najnowszych danych.
+Rewizje zastapily zegary telefonow. Cache i potwierdzenie serwera sa rozrozniane,
+spoznione odpowiedzi poprzedniego pokoju ignorowane, usuniete pozycje nie wracaja.
+Test dwoch klientow w emulatorze zachowuje oba rownoczesnie dodane rachunki.
+
+Pozostalo rozdzielenie calego dokumentu mieszkania na mniejsze rekordy/operacje,
+trwala kolejka offline z ponawianiem po restarcie i migracja obecnego schematu 2.
+Dopracowac komunikat konfliktu tej samej pozycji (teraz ostatni udany zapis wygrywa).
+Nie obiecywac zapisu offline: aktualna wersja odrzuca go z komunikatem i zachowuje
+formularz, a cache sluzy do podgladu.
 
 Gotowe, gdy dwa telefony edytujace rozne pozycje nie kasuja sobie zmian,
 a powrot internetu i restart aplikacji nie gubia oczekujacych zapisow.
 
 ### 7. Zamkniecie rozliczenia
+
+Status: zwykle czyszczenie obejmuje tylko rachunki potwierdzane przez uzytkownika,
+nie usuwa pozniejszych zakupow. Osobny przeplyw zamkniecia rozliczenia jest do zrobienia.
 
 Dodac jawne zamkniecie calej rozliczonej puli po recznym oddaniu pieniedzy.
 Pokazac kto komu placi, wymagac przypisania lub pominiecia pozostalych pozycji

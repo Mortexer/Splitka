@@ -1,93 +1,58 @@
 # Splitka
 
 Mobilna apka Flutter do dzielenia rachunkow miedzy wspollokatorow.
-
-Domyslny pokoj: `stancja`
-
-Domyslne osoby:
-
-- Danus
-- Kubus
-- Damian
+Domyslne osoby: Danus, Kubus, Damian. Android i iOS, bez Expo.
 
 ## Co juz robi
 
-- importuje JSON z paragonu Biedronki,
-- pozwala dodawac rachunki i pozycje recznie,
-- pozwala wybrac, kto uczestniczy w kazdej pozycji,
-- pozwala pominac pozycje z rozliczenia,
-- kaucje pokazuje informacyjnie, a zwrot opakowan odejmuje od rachunku,
-- liczy kto komu ma oddac pieniadze,
-- zapisuje dane lokalnie na telefonie,
-- opcjonalnie synchronizuje pokoj przez Firestore, jesli podasz konfiguracje Firebase.
+- Importuje JSON paragonu Biedronki oraz reczne rachunki i produkty.
+- Dzieli kazda pozycje na wybrane osoby albo pomija ja w rozliczeniu.
+- Kaucje pokazuje informacyjnie, zwroty opakowan zmniejszaja kwote.
+- Liczy w groszach, kto komu ma oddac pieniadze.
+- Zapisuje dane lokalnie; pozwala tworzyc wspolne mieszkanie w Firebase
+  i dolaczac przez prywatny, losowy kod zaproszenia.
+- Korzysta z anonimowej tozsamosci, bez ekranu rejestracji.
+- Synchronizuje zmiany online transakcjami, zachowuje ostatni podglad offline.
+- Potwierdza usuwanie i nie zamyka formularzy po nieudanym zapisie.
 
-Synchronizacja jest na etapie prototypu. Przed wspolnym uzywaniem trzeba
-dopiac dostep do pokoju, reguly bazy i obsluge rownoczesnych zmian.
-Kolejne zadania i warunki ich zakonczenia: [Plan prac](docs/ROADMAP.md).
+Zapis wspolnych rachunkow wymaga internetu. Trwala kolejka offline, docelowy
+podpis APK i test na fizycznym iPhonie sa jeszcze przed nami.
+Szczegoly i warunki zakonczenia: [Plan prac](docs/ROADMAP.md).
 
-## Ikona
+## Start
 
-Ikona Splitki jest ustawiona na Androidzie, iOS i w naglowku aplikacji.
-Pliki zrodlowe i opis generowania: [Branding](assets/branding/README.md).
-Po zmianie grafiki uruchom `dart run tool/generate_icons.dart`.
-
-## Start lokalny
+Wymagany Flutter (sprawdzone na 3.41.6), Android SDK lub Mac z Xcode.
 
 ```powershell
 flutter pub get
-flutter run
-```
-
-Jesli masz kilka urzadzen:
-
-```powershell
 flutter devices
 flutter run -d ID_URZADZENIA
 ```
 
+Nowa instalacja zaczyna z rachunkami lokalnymi. Przycisk Mieszkanie pozwala
+utworzyc wspolne mieszkanie lub dolaczyc do istniejacego.
+Tylko jedna osoba tworzy mieszkanie; pozostali wklejaja jej kod.
+[Firebase: konfiguracja, wdrozenie i testy](docs/FIREBASE.md).
+
 ## APK na Androida
-
-Debug APK do szybkiego wrzucenia na telefon:
-
-```powershell
-flutter build apk --debug
-```
-
-Plik:
-
-```text
-build\app\outputs\flutter-apk\app-debug.apk
-```
-
-Release APK bez chmury:
 
 ```powershell
 flutter build apk --release
 ```
 
-Plik:
+Wynik: `build/app/outputs/flutter-apk/app-release.apk`.
+Aplikacja zawiera konfiguracje Firebase `splitka-18560`; nie trzeba
+przekazywac kluczy w poleceniu ani uruchamiac osobnego serwera.
 
-```text
-build\app\outputs\flutter-apk\app-release.apk
-```
+Uwaga: obecny APK testowy uzywa klucza debug, mimo trybu release.
+Docelowe podpisywanie i aktualizacje sa osobnym etapem planu.
+Nie odinstalowuj aplikacji z lokalnymi rachunkami bez ich zabezpieczenia.
 
-## Firebase
-
-Bez Firebase apka dziala lokalnie. Z Firebase kilka telefonow moze wspoldzielic ten sam pokoj.
-
-Build z chmura:
+Build celowo pozbawiony synchronizacji:
 
 ```powershell
-flutter build apk --release `
-  --dart-define=FIREBASE_API_KEY=... `
-  --dart-define=FIREBASE_AUTH_DOMAIN=... `
-  --dart-define=FIREBASE_PROJECT_ID=... `
-  --dart-define=FIREBASE_STORAGE_BUCKET=... `
-  --dart-define=FIREBASE_MESSAGING_SENDER_ID=... `
-  --dart-define=FIREBASE_APP_ID=...
+flutter build apk --release --dart-define=SPLITKA_LOCAL_ONLY=true
 ```
-
-Te same `--dart-define` dzialaja dla `flutter run`.
 
 ## iPhone
 
@@ -95,20 +60,37 @@ Na MacBooku:
 
 ```bash
 flutter pub get
-flutter run
+flutter build ios --debug --no-codesign
+open ios/Runner.xcworkspace
 ```
 
-Do instalacji poza App Store najwygodniej otworzyc:
+W Xcode wybierz Runner, swoje konto w Signing & Capabilities i podlaczony
+iPhone, a nastepnie uruchom aplikacje. Wymagany iOS 15.0+.
+Konfiguracja Firebase iOS jest dolaczona. Builda i dzialania iOS nie mozna
+zweryfikowac na Windowsie; trzeba wykonac je na Macu.
+Sposob dlugoterminowej dystrybucji iPhone'a pozostaje do ustalenia.
 
-```text
-ios/Runner.xcworkspace
-```
-
-W Xcode wybierz swoje Apple ID w `Signing & Capabilities`, podlacz iPhone'a i uruchom `Runner` na telefonie.
-
-## Przydatne kontrole
+## Kontrole
 
 ```powershell
 flutter analyze
 flutter test
+npm.cmd ci
+npm.cmd run test:rules
 ```
+
+Node jest potrzebny tylko do narzedzi Firebase, nie do uruchamiania aplikacji.
+Emulator regul wymaga Javy 21+. Testy uzywaja lokalnego `demo-splitka`,
+nie prawdziwych rachunkow. Szczegoly: [Firebase](docs/FIREBASE.md).
+
+## Ikona
+
+Ikona jest ustawiona na Androidzie, iOS i w naglowku aplikacji.
+Pliki i instrukcja: [Branding](assets/branding/README.md).
+Po zmianie grafiki uruchom `dart run tool/generate_icons.dart`.
+
+## Kod i backend
+
+Repozytorium: [Mortexer/Splitka](https://github.com/Mortexer/Splitka).
+Firebase Auth i Firestore obsluguja wspolne dane.
+GitHub przechowuje kod; Render nie jest potrzebny.
