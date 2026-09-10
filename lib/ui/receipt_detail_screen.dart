@@ -47,7 +47,6 @@ class ReceiptDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totals = getReceiptTotals(receipt);
-    final settlement = calculateSettlement(household);
 
     return PopScope(
       canPop: false,
@@ -75,38 +74,10 @@ class ReceiptDetailScreen extends StatelessWidget {
                         onSetPayer: onSetPayer,
                       ),
                       const SizedBox(height: 14),
-                      _TotalsSection(receipt: receipt, totals: totals),
-                      const SizedBox(height: 14),
-                      AppCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SectionHeader(
-                              title: 'Szybki wybór',
-                              meta: 'produkty',
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: SecondaryActionButton(
-                                    label: 'Wszyscy',
-                                    icon: Icons.group_rounded,
-                                    onPressed: onAssignAllProducts,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: SecondaryActionButton(
-                                    label: 'Nikt',
-                                    icon: Icons.block_rounded,
-                                    onPressed: onClearProductAssignments,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                      _TotalsSection(
+                        receipt: receipt,
+                        totals: totals,
+                        members: household.members,
                       ),
                       const SizedBox(height: 14),
                       AddItemForm(
@@ -114,9 +85,10 @@ class ReceiptDetailScreen extends StatelessWidget {
                         onAddItem: onAddItem,
                       ),
                       const SizedBox(height: 14),
-                      SectionHeader(
-                        title: 'Pozycje',
-                        meta: '${receipt.items.length} pozycji',
+                      _ItemsHeader(
+                        count: receipt.items.length,
+                        onAssignAll: onAssignAllProducts,
+                        onClearAssignments: onClearProductAssignments,
                       ),
                       const SizedBox(height: 10),
                       ...receipt.items.map(
@@ -143,8 +115,6 @@ class ReceiptDetailScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      SettlementCard(settlement: settlement, compact: true),
                     ],
                   ),
                 ),
@@ -222,27 +192,40 @@ class _DetailHeader extends StatelessWidget {
                 ],
               ),
             ),
-            StatusPill(
-              label: pendingCount > 0
-                  ? '$pendingCount do podziału'
-                  : 'Podzielony',
-              tone: pendingCount > 0 ? PillTone.amber : PillTone.green,
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: onDeleteReceipt,
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.danger.withValues(alpha: 0.14),
-                foregroundColor: AppColors.danger,
-                side: BorderSide(
-                  color: AppColors.danger.withValues(alpha: 0.42),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                fixedSize: const Size(38, 38),
+            if (pendingCount > 0) ...[
+              StatusPill(
+                label: '$pendingCount do podziału',
+                tone: PillTone.amber,
               ),
-              icon: const Icon(Icons.delete_rounded, size: 17),
+              const SizedBox(width: 4),
+            ],
+            PopupMenuButton<_ReceiptAction>(
+              key: const ValueKey('receipt-actions'),
+              tooltip: 'Więcej opcji',
+              color: AppColors.cardAlt,
+              icon: const Icon(Icons.more_vert_rounded, size: 19),
+              onSelected: (action) {
+                if (action == _ReceiptAction.delete) onDeleteReceipt();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: _ReceiptAction.delete,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.danger,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Usuń paragon',
+                        style: TextStyle(color: AppColors.danger),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -298,13 +281,26 @@ class _PayerSection extends StatelessWidget {
 }
 
 class _TotalsSection extends StatelessWidget {
-  const _TotalsSection({required this.receipt, required this.totals});
+  const _TotalsSection({
+    required this.receipt,
+    required this.totals,
+    required this.members,
+  });
 
   final Receipt receipt;
   final ReceiptTotals totals;
+  final List<Person> members;
 
   @override
   Widget build(BuildContext context) {
+    Person? payer;
+    for (final person in members) {
+      if (person.id == receipt.payerId) {
+        payer = person;
+        break;
+      }
+    }
+
     return AppCard(
       child: Column(
         children: [
@@ -333,20 +329,108 @@ class _TotalsSection extends StatelessWidget {
           ),
           const Divider(color: AppColors.border, height: 18),
           MoneyRow(
-            label: 'Do podziału',
-            value: formatMoney(totals.includedCents),
+            label: 'Zapłacone przez ${payer?.name ?? 'nieznaną osobę'}',
+            value: formatMoney(receiptCashTotal(receipt)),
             strong: true,
           ),
           MoneyRow(
-            label: 'Nieprzypisane',
-            value: formatMoney(totals.unassignedCents),
-            color: AppColors.amber,
+            label: 'Do podziału',
+            value: formatMoney(totals.includedCents),
+            color: AppColors.primary,
           ),
+          if (totals.unassignedCents != 0)
+            MoneyRow(
+              label: 'Nieprzypisane',
+              value: formatMoney(totals.unassignedCents),
+              color: AppColors.amber,
+            ),
         ],
       ),
     );
   }
 }
+
+class _ItemsHeader extends StatelessWidget {
+  const _ItemsHeader({
+    required this.count,
+    required this.onAssignAll,
+    required this.onClearAssignments,
+  });
+
+  final int count;
+  final VoidCallback onAssignAll;
+  final VoidCallback onClearAssignments;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'Pozycje',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        Text(
+          '$count pozycji',
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 2),
+        PopupMenuButton<_AssignmentAction>(
+          tooltip: 'Przypisz wszystkie pozycje',
+          color: AppColors.cardAlt,
+          icon: const Icon(
+            Icons.group_work_outlined,
+            color: AppColors.textMuted,
+            size: 19,
+          ),
+          onSelected: (action) {
+            switch (action) {
+              case _AssignmentAction.everyone:
+                onAssignAll();
+              case _AssignmentAction.nobody:
+                onClearAssignments();
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(
+              value: _AssignmentAction.everyone,
+              child: Row(
+                children: [
+                  Icon(Icons.groups_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text('Wszystkie dla wszystkich'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: _AssignmentAction.nobody,
+              child: Row(
+                children: [
+                  Icon(Icons.block_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text('Wyczyść przypisania'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+enum _ReceiptAction { delete }
+
+enum _AssignmentAction { everyone, nobody }
 
 class AddItemForm extends StatefulWidget {
   const AddItemForm({
@@ -590,7 +674,7 @@ class _ItemCardState extends State<ItemCard> {
                     Text(
                       widget.item.kind == ReceiptItemKind.depositReturn
                           ? 'odejmuje rachunek'
-                          : 'ilość: ${widget.item.quantity}',
+                          : widget.item.quantity,
                       style: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 12,

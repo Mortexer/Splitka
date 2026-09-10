@@ -4,6 +4,7 @@ import '../domain/money.dart';
 import '../domain/models.dart';
 import '../domain/receipts.dart';
 import '../domain/settlements.dart';
+import '../domain/shopping_lists.dart';
 import '../state/household_controller.dart';
 import 'common_widgets.dart';
 import 'room_dialog.dart';
@@ -51,6 +52,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final household = controller.household;
     final settlement = calculateSettlement(household);
+    final shoppingBadge = shoppingListIds(household).fold<int>(
+      0,
+      (sum, listId) =>
+          sum +
+          shoppingItems(
+            household,
+            listId,
+          ).where((item) => !item.completed).length,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -59,6 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _Header(
                 controller: controller,
+                selectedTab: _selectedTab,
                 onRoomPressed: () => showDialog<void>(
                   context: context,
                   barrierDismissible: false,
@@ -72,23 +83,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
                       children: [
+                        PrimaryActionButton(
+                          label: widget.importing
+                              ? 'Importowanie...'
+                              : 'Importuj paragon (JSON)',
+                          icon: Icons.file_upload_outlined,
+                          onPressed: widget.onImport,
+                          enabled: !widget.importing,
+                        ),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
-                              child: PrimaryActionButton(
-                                label: widget.importing
-                                    ? 'Importowanie...'
-                                    : 'Importuj JSON',
-                                icon: Icons.upload_file_rounded,
-                                onPressed: widget.onImport,
-                                enabled: !widget.importing,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
                               child: SecondaryActionButton(
                                 label: _manualFormOpen
-                                    ? 'Zamknij'
+                                    ? 'Zamknij formularz'
                                     : 'Dodaj ręcznie',
                                 icon: _manualFormOpen
                                     ? Icons.close_rounded
@@ -98,6 +107,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                             ),
+                            if (household.receipts.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              IconButton.outlined(
+                                tooltip: 'Wyczyść rachunki',
+                                onPressed: widget.onClearAll,
+                                icon: const Icon(Icons.delete_sweep_outlined),
+                              ),
+                            ],
                           ],
                         ),
                         if (_manualFormOpen) ...[
@@ -119,10 +136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                         const SizedBox(height: 14),
                         if (household.receipts.isEmpty)
-                          EmptyState(
-                            importing: widget.importing,
-                            onImport: widget.onImport,
-                          )
+                          const EmptyState()
                         else ...[
                           SectionHeader(
                             title: 'Paragony',
@@ -140,12 +154,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                           ),
-                          SecondaryActionButton(
-                            label: 'Wyczyść rachunki',
-                            icon: Icons.refresh_rounded,
-                            onPressed: widget.onClearAll,
-                          ),
-                          const SizedBox(height: 14),
                           SettlementCard(settlement: settlement),
                         ],
                       ],
@@ -176,16 +184,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onDestinationSelected: (index) =>
                   setState(() => _selectedTab = index),
               backgroundColor: AppColors.card,
-              indicatorColor: AppColors.primary,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.receipt_long_outlined),
-                  selectedIcon: Icon(Icons.receipt_long_rounded),
-                  label: 'Rachunki',
+              destinations: [
+                const NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                  label: 'Rozliczenia',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.checklist_rounded),
-                  selectedIcon: Icon(Icons.shopping_cart_rounded),
+                  icon: Badge.count(
+                    count: shoppingBadge,
+                    isLabelVisible: shoppingBadge > 0,
+                    backgroundColor: AppColors.primary,
+                    textColor: AppColors.primaryForeground,
+                    child: const Icon(Icons.playlist_add_check_rounded),
+                  ),
+                  selectedIcon: Badge.count(
+                    count: shoppingBadge,
+                    isLabelVisible: shoppingBadge > 0,
+                    backgroundColor: AppColors.primary,
+                    textColor: AppColors.primaryForeground,
+                    child: const Icon(Icons.playlist_add_check_rounded),
+                  ),
                   label: 'Listy zakupów',
                 ),
               ],
@@ -198,14 +217,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.controller, required this.onRoomPressed});
+  const _Header({
+    required this.controller,
+    required this.selectedTab,
+    required this.onRoomPressed,
+  });
 
   final HouseholdController controller;
+  final int selectedTab;
   final VoidCallback onRoomPressed;
 
   @override
   Widget build(BuildContext context) {
     final household = controller.household;
+    final showingLists = selectedTab == 1;
 
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -218,36 +243,47 @@ class _Header extends StatelessWidget {
           children: [
             Row(
               children: [
-                Image.asset(
-                  'assets/branding/splitka-foreground.png',
-                  width: 44,
-                  height: 44,
-                  fit: BoxFit.contain,
-                  excludeFromSemantics: true,
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardAlt,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    showingLists
+                        ? Icons.shopping_basket_outlined
+                        : Icons.receipt_long_outlined,
+                    color: AppColors.text,
+                    size: 17,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Splitka',
-                        style: TextStyle(
+                      Text(
+                        showingLists ? 'Listy zakupów' : 'Splitka',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           color: AppColors.text,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
                         controller.isCloudRoom
-                            ? 'Wspólne mieszkanie'
-                            : 'Na tym telefonie',
+                            ? 'WSPÓLNE MIESZKANIE'
+                            : 'STANCJA',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.textMuted,
                           fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                           fontFamily: 'monospace',
                         ),
                       ),
@@ -257,80 +293,70 @@ class _Header extends StatelessWidget {
                 SyncBadge(
                   syncState: controller.syncState,
                   error: controller.error,
+                  compact: MediaQuery.sizeOf(context).width <= 360,
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: controller.isCloudRoom
+                      ? 'Mieszkanie'
+                      : 'Połącz mieszkanie',
+                  onPressed: controller.busy ? null : onRoomPressed,
+                  icon: const Icon(Icons.home_outlined, size: 19),
+                  style: IconButton.styleFrom(
+                    fixedSize: const Size(34, 34),
+                    minimumSize: const Size(34, 34),
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: controller.busy ? null : onRoomPressed,
-                    icon: const Icon(Icons.home_outlined, size: 18),
-                    label: Text(
-                      controller.isCloudRoom
-                          ? 'Mieszkanie'
-                          : 'Połącz mieszkanie',
-                    ),
-                  ),
-                ),
-                if (controller.isCloudRoom) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Połącz ponownie',
-                    onPressed: controller.busy
-                        ? null
-                        : controller.retryConnection,
-                    icon: const Icon(Icons.sync_rounded, size: 20),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
             if (controller.error != null) ...[
+              const SizedBox(height: 8),
               Text(
                 controller.error!,
                 style: const TextStyle(color: AppColors.danger, fontSize: 12),
               ),
-              const SizedBox(height: 8),
             ],
-            Row(
-              children: [
-                SizedBox(
-                  width: 54,
-                  height: 30,
-                  child: Stack(
-                    children: [
-                      for (
-                        var index = 0;
-                        index < household.members.length;
-                        index += 1
-                      )
-                        Positioned(
-                          left: index * 17,
-                          child: PersonAvatar(
-                            person: household.members[index],
-                            size: 28,
+            if (!showingLists) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 54,
+                    height: 30,
+                    child: Stack(
+                      children: [
+                        for (
+                          var index = 0;
+                          index < household.members.length;
+                          index += 1
+                        )
+                          Positioned(
+                            left: index * 17,
+                            child: PersonAvatar(
+                              person: household.members[index],
+                              size: 28,
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    household.members.map((person) => person.name).join(', '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      household.members.map((person) => person.name).join(', '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -452,68 +478,55 @@ class _ManualReceiptCardState extends State<ManualReceiptCard> {
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({
-    super.key,
-    required this.importing,
-    required this.onImport,
-  });
-
-  final bool importing;
-  final VoidCallback onImport;
+  const EmptyState({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        child: Column(
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.14),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 38),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Column(
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.muted,
+              shape: BoxShape.circle,
+            ),
+            child: SizedBox.square(
+              dimension: 56,
+              child: Icon(
                 Icons.receipt_long_rounded,
-                color: AppColors.primary,
-                size: 30,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Brak paragonów',
-              style: TextStyle(
-                color: AppColors.text,
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Zaimportuj JSON z Biedronki albo dodaj rachunek ręcznie.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
                 color: AppColors.textMuted,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                height: 1.35,
+                size: 28,
               ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: PrimaryActionButton(
-                label: importing ? 'Importowanie...' : 'Importuj paragon',
-                icon: Icons.upload_file_rounded,
-                onPressed: onImport,
-                enabled: !importing,
-              ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Brak paragonów',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
-          ],
-        ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Zaimportuj plik JSON z paragonem z Biedronki, aby zacząć dzielić zakupy.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -558,12 +571,12 @@ class ReceiptListItem extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.muted,
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(
                   Icons.receipt_long_rounded,
-                  color: AppColors.primary,
+                  color: AppColors.textMuted,
                   size: 18,
                 ),
               ),
@@ -593,7 +606,7 @@ class ReceiptListItem extends StatelessWidget {
                       style: const TextStyle(
                         color: AppColors.text,
                         fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -609,7 +622,7 @@ class ReceiptListItem extends StatelessWidget {
                             style: const TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -627,7 +640,7 @@ class ReceiptListItem extends StatelessWidget {
                     style: const TextStyle(
                       color: AppColors.text,
                       fontSize: 14,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w600,
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
