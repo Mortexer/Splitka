@@ -8,24 +8,27 @@ import '../state/household_controller.dart';
 class AppColors {
   const AppColors._();
 
-  static const background = Color(0xFF101711);
-  static const backgroundSoft = Color(0xFF141D17);
-  static const card = Color(0xFF1A251E);
-  static const cardAlt = Color(0xFF223027);
-  static const muted = Color(0xFF2C3A31);
-  static const border = Color(0xFF344438);
-  static const borderSoft = Color(0xFF29382F);
-  static const text = Color(0xFFF1F7EF);
-  static const textMuted = Color(0xFFA8B7AB);
-  static const primary = Color(0xFF64D487);
-  static const primaryForeground = Color(0xFF0D1710);
-  static const blue = Color(0xFF7DA8FF);
-  static const amber = Color(0xFFF1C763);
-  static const danger = Color(0xFFF36F62);
+  static const background = Color(0xFF0C0E0D);
+  static const backgroundSoft = Color(0xFF161816);
+  static const card = Color(0xFF161816);
+  static const cardAlt = Color(0xFF222523);
+  static const muted = Color(0xFF1D1F1D);
+  static const border = Color(0xFF2F3530);
+  static const borderSoft = Color(0xFF2F3530);
+  static const text = Color(0xFFE7E8E5);
+  static const textMuted = Color(0xFF91938F);
+  static const primary = Color(0xFF45B164);
+  static const primaryForeground = Color(0xFF061308);
+  static const blue = Color(0xFF499FE3);
+  static const amber = Color(0xFFF2AF48);
+  static const danger = Color(0xFFE24947);
+  static const danus = Color(0xFF45B164);
+  static const kubus = Color(0xFF499FE3);
+  static const damian = Color(0xFFF59740);
 }
 
 ThemeData buildAppTheme() {
-  return ThemeData(
+  final theme = ThemeData(
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
       surface: AppColors.background,
@@ -34,6 +37,16 @@ ThemeData buildAppTheme() {
     ),
     fontFamily: 'Roboto',
     scaffoldBackgroundColor: AppColors.background,
+    dividerColor: AppColors.border,
+    splashFactory: InkRipple.splashFactory,
+    navigationBarTheme: const NavigationBarThemeData(
+      backgroundColor: AppColors.card,
+      indicatorColor: Colors.transparent,
+      elevation: 0,
+      labelTextStyle: WidgetStatePropertyAll(
+        TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    ),
     textSelectionTheme: const TextSelectionThemeData(
       cursorColor: AppColors.primary,
     ),
@@ -58,6 +71,33 @@ ThemeData buildAppTheme() {
         borderSide: const BorderSide(color: AppColors.primary),
       ),
     ),
+  );
+
+  return theme.copyWith(
+    textTheme: _withoutLetterSpacing(theme.textTheme),
+    primaryTextTheme: _withoutLetterSpacing(theme.primaryTextTheme),
+  );
+}
+
+TextTheme _withoutLetterSpacing(TextTheme theme) {
+  TextStyle? zero(TextStyle? style) => style?.copyWith(letterSpacing: 0);
+
+  return theme.copyWith(
+    displayLarge: zero(theme.displayLarge),
+    displayMedium: zero(theme.displayMedium),
+    displaySmall: zero(theme.displaySmall),
+    headlineLarge: zero(theme.headlineLarge),
+    headlineMedium: zero(theme.headlineMedium),
+    headlineSmall: zero(theme.headlineSmall),
+    titleLarge: zero(theme.titleLarge),
+    titleMedium: zero(theme.titleMedium),
+    titleSmall: zero(theme.titleSmall),
+    bodyLarge: zero(theme.bodyLarge),
+    bodyMedium: zero(theme.bodyMedium),
+    bodySmall: zero(theme.bodySmall),
+    labelLarge: zero(theme.labelLarge),
+    labelMedium: zero(theme.labelMedium),
+    labelSmall: zero(theme.labelSmall),
   );
 }
 
@@ -232,12 +272,12 @@ class PersonAvatar extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Color(person.color),
+        color: personDisplayColor(person),
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.background, width: 2),
       ),
       child: Text(
-        initials(person.name),
+        personInitials(person),
         style: TextStyle(
           color: Colors.white,
           fontSize: (size * 0.38).clamp(10.0, 14.0),
@@ -270,7 +310,7 @@ class PersonChoice extends StatelessWidget {
             : AppColors.card,
         foregroundColor: selected ? AppColors.text : AppColors.textMuted,
         side: BorderSide(
-          color: selected ? Color(person.color) : AppColors.border,
+          color: selected ? AppColors.primary : AppColors.border,
         ),
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -320,7 +360,7 @@ class PersonChip extends StatelessWidget {
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-              color: selected ? Colors.white : Color(person.color),
+              color: selected ? Colors.white : personDisplayColor(person),
               shape: BoxShape.circle,
             ),
           ),
@@ -334,7 +374,7 @@ class PersonChip extends StatelessWidget {
         fontWeight: FontWeight.w800,
       ),
       backgroundColor: AppColors.cardAlt,
-      selectedColor: Color(person.color),
+      selectedColor: personDisplayColor(person),
       side: BorderSide(color: selected ? Colors.transparent : AppColors.border),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
     );
@@ -342,10 +382,16 @@ class PersonChip extends StatelessWidget {
 }
 
 class SyncBadge extends StatelessWidget {
-  const SyncBadge({super.key, required this.syncState, required this.error});
+  const SyncBadge({
+    super.key,
+    required this.syncState,
+    required this.error,
+    this.compact = false,
+  });
 
   final SyncState syncState;
   final String? error;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -378,9 +424,9 @@ class SyncBadge extends StatelessWidget {
         ? AppColors.amber
         : AppColors.blue;
 
-    return Container(
+    final badge = Container(
       constraints: const BoxConstraints(minHeight: 30),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 10),
       decoration: BoxDecoration(
         color: failed
             ? AppColors.danger.withValues(alpha: 0.14)
@@ -396,18 +442,22 @@ class SyncBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 14),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: failed ? AppColors.danger : AppColors.textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+          if (!compact) ...[
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: failed ? AppColors.danger : AppColors.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
+
+    return compact ? Tooltip(message: label, child: badge) : badge;
   }
 }
 
@@ -498,14 +548,9 @@ class StatusPill extends StatelessWidget {
 enum PillTone { green, amber, muted }
 
 class SettlementCard extends StatelessWidget {
-  const SettlementCard({
-    super.key,
-    required this.settlement,
-    this.compact = false,
-  });
+  const SettlementCard({super.key, required this.settlement});
 
   final Settlement settlement;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -515,7 +560,6 @@ class SettlementCard extends StatelessWidget {
         children: [
           SectionHeader(
             title: 'Rozliczenie',
-            meta: formatMoney(settlement.includedCents),
             icon: Icons.account_balance_wallet_rounded,
           ),
           const SizedBox(height: 12),
@@ -523,6 +567,11 @@ class SettlementCard extends StatelessWidget {
             children: settlement.balances.map((balance) {
               final positive = balance.balanceCents > 0;
               final negative = balance.balanceCents < 0;
+              final person = Person(
+                id: balance.personId,
+                name: balance.name,
+                color: personDisplayColorById(balance.personId).toARGB32(),
+              );
               return Expanded(
                 child: Container(
                   margin: const EdgeInsets.only(right: 8),
@@ -536,6 +585,8 @@ class SettlementCard extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
+                      PersonAvatar(person: person, size: 28),
+                      const SizedBox(height: 5),
                       Text(
                         balance.name,
                         maxLines: 1,
@@ -549,8 +600,8 @@ class SettlementCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         balance.balanceCents == 0
-                            ? '0,00 zł'
-                            : '${positive ? '+' : ''}${formatMoney(balance.balanceCents)}',
+                            ? '—'
+                            : '${positive ? '+' : '−'}${formatMoney(balance.balanceCents.abs())}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -564,19 +615,6 @@ class SettlementCard extends StatelessWidget {
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
-                      if (!compact) ...[
-                        const SizedBox(height: 5),
-                        Text(
-                          'udział ${formatMoney(balance.shareCents)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -596,12 +634,16 @@ class SettlementCard extends StatelessWidget {
                 children: [
                   Icon(Icons.check_rounded, color: AppColors.primary, size: 17),
                   SizedBox(width: 8),
-                  Text(
-                    'Wszystko rozliczone',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
+                  Expanded(
+                    child: Text(
+                      'Wszystko rozliczone',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ],
@@ -622,40 +664,43 @@ class SettlementCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
+                      PersonAvatar(
+                        person: Person(
+                          id: transfer.fromPersonId,
+                          name: transfer.fromName,
+                          color: personDisplayColorById(
+                            transfer.fromPersonId,
+                          ).toARGB32(),
+                        ),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 7),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        color: AppColors.textMuted,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 7),
+                      PersonAvatar(
+                        person: Person(
+                          id: transfer.toPersonId,
+                          name: transfer.toName,
+                          color: personDisplayColorById(
+                            transfer.toPersonId,
+                          ).toARGB32(),
+                        ),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                transfer.fromName,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.text,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 7),
-                              child: Icon(
-                                Icons.arrow_forward_rounded,
-                                color: AppColors.textMuted,
-                                size: 15,
-                              ),
-                            ),
-                            Flexible(
-                              child: Text(
-                                transfer.toName,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.text,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          '${transfer.fromName} → ${transfer.toName}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       Text(
@@ -701,6 +746,26 @@ String initials(String name) {
       ? words[1][0]
       : (words.isEmpty || words.first.length < 2 ? '' : words.first[1]);
   return '$first$second'.toUpperCase();
+}
+
+Color personDisplayColor(Person person) => personDisplayColorById(person.id);
+
+Color personDisplayColorById(String personId) {
+  return switch (personId) {
+    'danus' => AppColors.danus,
+    'kubus' => AppColors.kubus,
+    'damian' => AppColors.damian,
+    _ => AppColors.primary,
+  };
+}
+
+String personInitials(Person person) {
+  return switch (person.id) {
+    'danus' => 'Da',
+    'kubus' => 'Ku',
+    'damian' => 'Dm',
+    _ => initials(person.name),
+  };
 }
 
 String formatReceiptDate(String? value) {
