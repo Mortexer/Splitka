@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function member(roomId) {
+      return signedIn() && exists(
+        /databases/$(database)/documents/households/$(roomId)/members/$(request.auth.uid)
+      );
+    }
+
+    function validCode(code) {
+      return code is string && code.matches('^[a-f0-9]{32}$');
+    }
+
+    function validRoom(data, roomId) {
+      return data.keys().hasOnly([
+          'schemaVersion', 'roomCode', 'inviteCode', 'createdBy',
+          'updatedBy', 'updatedAt', 'revision', 'household'
+        ]) && data.schemaVersion == 2
+        && data.roomCode == roomId
+        && validCode(data.inviteCode)
+        && data.createdBy is string
+        && data.updatedBy == request.auth.uid
+        && data.updatedAt == request.time
+        && data.revision is int && data.revision > 0
+        && data.household is map
+        && data.household.keys().hasOnly(['id', 'members', 'receipts', 'updatedAt'])
+        && data.household.id == roomId
+        && data.household.members is list
+        && data.household.members.size() >= 1
+        && data.household.members.size() <= 4
+        && data.household.receipts is list
+        && data.household.receipts.size() <= 500
+        && data.household.updatedAt is int;
+    }
+
+    match /households/{roomId} {
+      allow get: if member(roomId);
+      allow list, delete: if false;
+      allow create: if signedIn()
+        && validRoom(request.resource.data, roomId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.revision == 1
+        && getAfter(
+          /databases/$(database)/documents/households/$(roomId)/members/$(request.auth.uid)
+        ).data.uid == request.auth.uid
+        && getAfter(
+          /databases/$(database)/documents/invites/$(request.resource.data.inviteCode)
+        ).data.roomId == roomId;
+      allow update: if member(roomId)
+        && validRoom(request.resource.data, roomId)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.inviteCode == resource.data.inviteCode
+        && request.resource.data.household.members == resource.data.household.members
+        && request.resource.data.revision == resource.data.revision + 1;
+
+      match /members/{uid} {
+        allow get: if signedIn() && (request.auth.uid == uid || member(roomId));
+        allow list, update, delete: if false;
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['uid', 'inviteCode', 'joinedAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.joinedAt == request.time
+          && validCode(request.resource.data.inviteCode)
+          && (
+            (!exists(/databases/$(database)/documents/households/$(roomId))
+              && getAfter(/databases/$(database)/documents/households/$(roomId)).data.createdBy == uid
+              && getAfter(/databases/$(database)/documents/households/$(roomId)).data.inviteCode == request.resource.data.inviteCode)
+            || get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.roomId == roomId
+          );
+      }
+    }
+
+    // Knowing an unguessable invite permits joining, but never listing rooms.
+    match /invites/{code} {
+      allow get: if signedIn() && validCode(code);
+      allow list, update, delete: if false;
+      allow create: if signedIn() && validCode(code)
+        && request.resource.data.keys().hasOnly(['roomId', 'createdBy', 'createdAt'])
+        && request.resource.data.roomId is string
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && getAfter(
+          /databases/$(database)/documents/households/$(request.resource.data.roomId)/members/$(request.auth.uid)
+        ).data.uid == request.auth.uid;
+    }
+  }
+}
