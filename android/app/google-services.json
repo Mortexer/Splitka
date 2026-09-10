@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "468039135218",
+    "project_id": "splitka-18560",
+    "storage_bucket": "splitka-18560.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:468039135218:android:658ee42a1a5093a1e8056b",
+        "android_client_info": {
+          "package_name": "pl.splitka.splitka_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSY7dLeuceWalGLJ50BYPY6ZIBrQpjqj0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

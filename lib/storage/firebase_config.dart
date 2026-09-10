@@ -1,50 +1,43 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 class SplitkaFirebaseConfig {
   const SplitkaFirebaseConfig._();
 
-  static const apiKey = String.fromEnvironment(
-    'FIREBASE_API_KEY',
-    defaultValue: String.fromEnvironment('EXPO_PUBLIC_FIREBASE_API_KEY'),
-  );
-  static const authDomain = String.fromEnvironment(
-    'FIREBASE_AUTH_DOMAIN',
-    defaultValue: String.fromEnvironment('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
-  );
-  static const projectId = String.fromEnvironment(
-    'FIREBASE_PROJECT_ID',
-    defaultValue: String.fromEnvironment('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
-  );
-  static const storageBucket = String.fromEnvironment(
-    'FIREBASE_STORAGE_BUCKET',
-    defaultValue: String.fromEnvironment('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
-  );
-  static const messagingSenderId = String.fromEnvironment(
-    'FIREBASE_MESSAGING_SENDER_ID',
-    defaultValue: String.fromEnvironment(
-      'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-    ),
-  );
-  static const appId = String.fromEnvironment(
-    'FIREBASE_APP_ID',
-    defaultValue: String.fromEnvironment('EXPO_PUBLIC_FIREBASE_APP_ID'),
-  );
+  static const projectId = 'splitka-18560';
+  static const enabled = !bool.fromEnvironment('SPLITKA_LOCAL_ONLY');
 
-  static bool get isConfigured {
-    return apiKey.isNotEmpty &&
-        projectId.isNotEmpty &&
-        appId.isNotEmpty &&
-        messagingSenderId.isNotEmpty;
-  }
+  static bool get isConfigured =>
+      enabled && !kIsWeb && optionsForPlatform(defaultTargetPlatform) != null;
 
   static FirebaseOptions get options {
-    return const FirebaseOptions(
-      apiKey: apiKey,
-      appId: appId,
-      messagingSenderId: messagingSenderId,
-      projectId: projectId,
-      authDomain: authDomain,
-      storageBucket: storageBucket,
-    );
+    return optionsForPlatform(defaultTargetPlatform) ??
+        (throw UnsupportedError('Splitka supports Android and iOS.'));
   }
+
+  static FirebaseOptions? optionsForPlatform(TargetPlatform platform) {
+    return switch (platform) {
+      TargetPlatform.android => android,
+      TargetPlatform.iOS => ios,
+      _ => null,
+    };
+  }
+
+  // Public client configuration; access is controlled by Firestore rules.
+  static const android = FirebaseOptions(
+    apiKey: 'AIzaSyBSY7dLeuceWalGLJ50BYPY6ZIBrQpjqj0',
+    appId: '1:468039135218:android:658ee42a1a5093a1e8056b',
+    messagingSenderId: '468039135218',
+    projectId: projectId,
+    storageBucket: 'splitka-18560.firebasestorage.app',
+  );
+
+  static const ios = FirebaseOptions(
+    apiKey: 'AIzaSyC4g-otV9m0CHXA2rqSSufzvwIbnFVbyeI',
+    appId: '1:468039135218:ios:e1ab248e1d67c65be8056b',
+    messagingSenderId: '468039135218',
+    projectId: projectId,
+    storageBucket: 'splitka-18560.firebasestorage.app',
+    iosBundleId: 'pl.splitka.splitkaFlutter',
+  );
 }
