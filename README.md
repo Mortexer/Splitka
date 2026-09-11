@@ -10,6 +10,7 @@ Domyslne osoby: Danus, Kubus, Damian. Android i iOS, bez Expo.
 - Ma osobna zakladke list zakupow: wspolna oraz po jednej dla kazdej aktywnej osoby.
 - Pozwala nazwac grupe oraz dodawac, edytowac i dezaktywowac do 20 osob.
 - Obsluguje wiele niezaleznych grup i szybkie przelaczanie z naglowka.
+- Przy tworzeniu grupy pozwala wybrac tryb `Tylko ja` albo `Wspolna` przez kod.
 - Pozwala dodawac, odhaczac i usuwac produkty z list zakupow.
 - Kaucje pokazuje informacyjnie, zwroty opakowan zmniejszaja kwote.
 - Liczy w groszach, kto komu ma oddac pieniadze.

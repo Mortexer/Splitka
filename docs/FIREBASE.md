@@ -51,6 +51,8 @@ widocznego konta: Firebase nadaje kazdej instalacji anonimowa tozsamosc.
 Po reinstalacji lub wyczyszczeniu danych aplikacji dolacz ponownie tym samym kodem.
 Rachunki lokalne sa osobne od wspolnych. Dolaczenie nie scala danych z dwoch
 telefonow. Powrot do lokalnych nie usuwa rachunkow w chmurze ani czlonkostwa.
+Nowa grupa w trybie `Tylko ja` nie laczy sie z Firebase. Tryb `Wspolna` tworzy
+kod i pozwala wszystkim zaproszonym instalacjom przegladac oraz edytowac dane.
 
 ## Jak dziala zapis
 

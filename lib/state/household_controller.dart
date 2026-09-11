@@ -73,21 +73,42 @@ class HouseholdController extends ChangeNotifier {
   }
 
   Future<bool> createCloudRoom() {
-    return _changeRoom(() => _firebaseStore.createHousehold(household));
+    if (isCloudRoom) return Future.value(true);
+    final localGroupId = roomCode;
+    return _changeRoom(
+      () => _firebaseStore.createHousehold(household),
+      replaceGroupId: localGroupId,
+    );
   }
 
   Future<bool> joinCloudRoom(String code) {
     return _changeRoom(() => _firebaseStore.joinHousehold(code));
   }
 
-  Future<bool> createLocalGroup(String name) async {
+  Future<bool> createGroup(String name, GroupAccessMode accessMode) async {
+    if (accessMode == GroupAccessMode.private) {
+      return createLocalGroup(name);
+    }
+    try {
+      final seed = renameGroup(createDefaultHousehold(), name);
+      return _changeRoom(() => _firebaseStore.createHousehold(seed));
+    } catch (createError) {
+      _markError(createError);
+      return false;
+    }
+  }
+
+  Future<bool> createLocalGroup(String name, {String? groupId}) async {
     if (busy || !loaded) return false;
     connectingRoom = true;
     error = null;
     _notify();
     var generation = _generation;
     try {
-      final id = _newLocalGroupId();
+      final id = groupId ?? _newLocalGroupId();
+      if (groups.any((group) => group.id == id)) {
+        throw const FormatException('Taka grupa już istnieje.');
+      }
       final next = renameGroup(createDefaultHousehold(id), name);
       final entry = StoredGroup(id: id, name: next.name, isCloud: false);
       final nextGroups = [...groups, entry];
@@ -206,8 +227,9 @@ class HouseholdController extends ChangeNotifier {
   }
 
   Future<bool> _changeRoom(
-    Future<RemoteHouseholdChange> Function() connect,
-  ) async {
+    Future<RemoteHouseholdChange> Function() connect, {
+    String? replaceGroupId,
+  }) async {
     if (busy || !loaded) return false;
     connectingRoom = true;
     error = null;
@@ -221,12 +243,16 @@ class HouseholdController extends ChangeNotifier {
         revision: room.revision,
         inviteCode: room.inviteCode,
       );
+      final baseGroups = replaceGroupId == null
+          ? groups
+          : groups.where((group) => group.id != replaceGroupId).toList();
       final nextGroups = _upsertGroup(
         StoredGroup(
           id: room.household.id,
           name: room.household.name,
           isCloud: true,
         ),
+        source: baseGroups,
       );
       await _localStore.saveGroupDirectory(nextGroups, room.household.id);
       if (!_isCurrent(generation)) return false;
@@ -242,6 +268,9 @@ class HouseholdController extends ChangeNotifier {
       syncState = SyncState.online;
       _notify();
       await _connectRemote(nextGeneration);
+      if (replaceGroupId != null) {
+        await _localStore.deleteHousehold(replaceGroupId);
+      }
       return true;
     } catch (connectionError) {
       if (!_disposed) _markError(connectionError);
@@ -254,7 +283,9 @@ class HouseholdController extends ChangeNotifier {
 
   Future<bool> useLocalMode() async {
     final local = groups.where((group) => !group.isCloud).firstOrNull;
-    if (local == null) return createLocalGroup(defaultGroupName);
+    if (local == null) {
+      return createLocalGroup(defaultGroupName, groupId: defaultRoomCode);
+    }
     return switchGroup(local.id);
   }
 
@@ -371,8 +402,11 @@ class HouseholdController extends ChangeNotifier {
 
   bool _isCurrent(int generation) => !_disposed && generation == _generation;
 
-  List<StoredGroup> _upsertGroup(StoredGroup next) {
-    final without = groups.where((group) => group.id != next.id);
+  List<StoredGroup> _upsertGroup(
+    StoredGroup next, {
+    Iterable<StoredGroup>? source,
+  }) {
+    final without = (source ?? groups).where((group) => group.id != next.id);
     return [...without, next];
   }
 

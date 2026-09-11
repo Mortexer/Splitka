@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/models.dart';
 
+enum GroupAccessMode { private, shared }
+
 class LocalHouseholdSnapshot {
   const LocalHouseholdSnapshot({
     required this.household,
@@ -28,6 +30,9 @@ class StoredGroup {
   final String id;
   final String name;
   final bool isCloud;
+
+  GroupAccessMode get accessMode =>
+      isCloud ? GroupAccessMode.shared : GroupAccessMode.private;
 
   StoredGroup copyWith({String? id, String? name, bool? isCloud}) {
     return StoredGroup(

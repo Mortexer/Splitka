@@ -101,21 +101,23 @@ void main() {
     },
   );
 
-  test(
-    'creating a room persists membership selection and keeps local data',
-    () async {
-      await controller.boot();
-      await controller.commit((h) => h.copyWith(receipts: [receipt('Local')]));
-      expect(await controller.createCloudRoom(), isTrue);
-      expect(controller.isCloudRoom, isTrue);
-      expect(controller.inviteCode, code);
-      expect(await LocalStore().loadCloudRoomId(), 'cloud-room');
+  test('sharing upgrades the current group and keeps its data', () async {
+    await controller.boot();
+    await controller.commit((h) => h.copyWith(receipts: [receipt('Local')]));
+    expect(await controller.createCloudRoom(), isTrue);
+    expect(controller.isCloudRoom, isTrue);
+    expect(controller.inviteCode, code);
+    expect(controller.groups, hasLength(1));
+    expect(controller.currentGroup.accessMode, GroupAccessMode.shared);
+    expect(controller.household.receipts.single.title, 'Local');
+    expect(await LocalStore().loadCloudRoomId(), 'cloud-room');
 
-      expect(await controller.useLocalMode(), isTrue);
-      expect(controller.household.receipts.single.title, 'Local');
-      expect(await LocalStore().loadCloudRoomId(), isNull);
-    },
-  );
+    expect(await controller.useLocalMode(), isTrue);
+    expect(controller.household.receipts, isEmpty);
+    expect(controller.groups, hasLength(2));
+    expect(controller.currentGroup.accessMode, GroupAccessMode.private);
+    expect(await LocalStore().loadCloudRoomId(), isNull);
+  });
 
   test('invalid invitation does not change the selected room', () async {
     await controller.boot();
@@ -274,6 +276,21 @@ void main() {
     expect(controller.household.receipts.single.title, 'Trip');
     expect(await controller.removeGroup(homeId), isTrue);
     expect(controller.groups.single.id, tripId);
+  });
+
+  test('creates a new shared group without changing another group', () async {
+    await controller.boot();
+    final privateId = controller.roomCode;
+
+    expect(
+      await controller.createGroup('Impreza', GroupAccessMode.shared),
+      isTrue,
+    );
+
+    expect(controller.household.name, 'Impreza');
+    expect(controller.currentGroup.accessMode, GroupAccessMode.shared);
+    expect(controller.groups.map((group) => group.id), contains(privateId));
+    expect(controller.groups, hasLength(2));
   });
 
   test(

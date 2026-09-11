@@ -455,8 +455,8 @@ class _SharingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(
-            title: 'Udostępnianie',
-            meta: controller.isCloudRoom ? 'CHMURA' : 'LOKALNIE',
+            title: 'Tryb dostępu',
+            meta: controller.isCloudRoom ? 'WSPÓLNA' : 'TYLKO JA',
             icon: controller.isCloudRoom
                 ? Icons.cloud_done_outlined
                 : Icons.phone_android_outlined,
@@ -464,8 +464,8 @@ class _SharingCard extends StatelessWidget {
           const SizedBox(height: 12),
           SecondaryActionButton(
             label: controller.isCloudRoom
-                ? 'Kod i ustawienia chmury'
-                : 'Połącz grupę z chmurą',
+                ? 'Pokaż kod dostępu'
+                : 'Ustaw jako wspólną',
             icon: Icons.ios_share_rounded,
             onPressed: controller.busy ? () {} : onPressed,
           ),

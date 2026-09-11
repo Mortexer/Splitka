@@ -128,12 +128,12 @@ class GroupSwitcherSheet extends StatelessWidget {
   }
 
   Future<void> _createGroup(BuildContext context) async {
-    final name = await showDialog<String>(
+    final draft = await showDialog<_NewGroupDraft>(
       context: context,
       builder: (_) => const _NewGroupDialog(),
     );
-    if (name == null || !context.mounted) return;
-    final created = await controller.createLocalGroup(name);
+    if (draft == null || !context.mounted) return;
+    final created = await controller.createGroup(draft.name, draft.accessMode);
     if (!context.mounted) return;
     if (created) {
       Navigator.of(context).pop();
@@ -226,7 +226,11 @@ class _GroupRow extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
-      subtitle: Text(group.isCloud ? 'W chmurze' : 'Na tym telefonie'),
+      subtitle: Text(
+        group.accessMode == GroupAccessMode.shared
+            ? 'Wspólna przez kod'
+            : 'Tylko na tym telefonie',
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -253,6 +257,7 @@ class _NewGroupDialog extends StatefulWidget {
 
 class _NewGroupDialogState extends State<_NewGroupDialog> {
   final _name = TextEditingController();
+  GroupAccessMode _accessMode = GroupAccessMode.private;
 
   @override
   void dispose() {
@@ -265,15 +270,48 @@ class _NewGroupDialogState extends State<_NewGroupDialog> {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       title: const Text('Nowa grupa'),
-      content: TextField(
-        key: const ValueKey('new-group-name'),
-        controller: _name,
-        autofocus: true,
-        maxLength: 40,
-        textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(labelText: 'Nazwa grupy'),
-        onChanged: (_) => setState(() {}),
-        onSubmitted: (_) => _submit(),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            key: const ValueKey('new-group-name'),
+            controller: _name,
+            autofocus: true,
+            maxLength: 40,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Nazwa grupy'),
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<GroupAccessMode>(
+            key: const ValueKey('group-access-mode'),
+            segments: const [
+              ButtonSegment(
+                value: GroupAccessMode.private,
+                icon: Icon(Icons.lock_outline_rounded),
+                label: Text('Tylko ja'),
+              ),
+              ButtonSegment(
+                value: GroupAccessMode.shared,
+                icon: Icon(Icons.groups_outlined),
+                label: Text('Wspólna'),
+              ),
+            ],
+            selected: {_accessMode},
+            showSelectedIcon: false,
+            onSelectionChanged: (selected) =>
+                setState(() => _accessMode = selected.first),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _accessMode == GroupAccessMode.private
+                ? 'Dane zostają na tym telefonie.'
+                : 'Każdy z kodem może przeglądać i edytować.',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+        ],
       ),
       actions: [
         TextButton(
@@ -290,6 +328,15 @@ class _NewGroupDialogState extends State<_NewGroupDialog> {
 
   void _submit() {
     final value = _name.text.trim();
-    if (value.isNotEmpty) Navigator.of(context).pop(value);
+    if (value.isNotEmpty) {
+      Navigator.of(context).pop(_NewGroupDraft(value, _accessMode));
+    }
   }
+}
+
+class _NewGroupDraft {
+  const _NewGroupDraft(this.name, this.accessMode);
+
+  final String name;
+  final GroupAccessMode accessMode;
 }

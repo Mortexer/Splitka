@@ -40,7 +40,7 @@ class _RoomDialogState extends State<RoomDialog> {
       child: AlertDialog(
         scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        title: const Text('Udostępnianie grupy'),
+        title: const Text('Dostęp do grupy'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
           child: Column(
@@ -82,13 +82,13 @@ class _RoomDialogState extends State<RoomDialog> {
                       ? null
                       : () => _run(controller.createCloudRoom),
                   icon: const Icon(Icons.add_home_outlined),
-                  label: const Text('Utwórz grupę w chmurze'),
+                  label: const Text('Ustaw jako wspólną'),
                 ),
                 if (controller.household.receipts.isNotEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'Bieżące rachunki i listy zostaną dodane do grupy.',
+                      'Rachunki i listy trafią do chmury. Każdy z kodem będzie mógł je edytować.',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
@@ -136,11 +136,6 @@ class _RoomDialogState extends State<RoomDialog> {
           ),
         ),
         actions: [
-          if (controller.isCloudRoom)
-            TextButton(
-              onPressed: _working ? null : () => _run(controller.useLocalMode),
-              child: const Text('Tryb lokalny'),
-            ),
           TextButton(
             onPressed: _working ? null : () => Navigator.of(context).pop(),
             child: const Text('Zamknij'),

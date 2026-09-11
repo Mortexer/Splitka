@@ -18,6 +18,8 @@ Funkcje commitujemy osobno i wysylamy do Mortexer/Splitka.
 - Dowolna nazwa grupy oraz zarzadzanie maksymalnie 20 osobami: dodawanie,
   zmiana nazwy i koloru, dezaktywowanie i bezpieczne usuwanie.
 - Wiele niezaleznych grup lokalnych i chmurowych z szybkim przelaczaniem.
+- Jawny tryb dostepu: prywatna grupa na jednym telefonie albo wspolna grupa,
+  w ktorej kazda zaproszona instalacja ma takie same prawa edycji.
 - Testy kontrolera, formularzy i regul, w tym jednoczesny zapis dwoch klientow.
 
 Nowa instalacja przechowuje rachunki lokalnie, dopoki nie utworzysz mieszkania

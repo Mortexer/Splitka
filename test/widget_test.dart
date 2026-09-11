@@ -314,6 +314,9 @@ void main() {
 
     await tester.tap(find.text('Nowa grupa'));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('group-access-mode')), findsOneWidget);
+    expect(find.text('Tylko ja'), findsOneWidget);
+    expect(find.text('Wspólna'), findsOneWidget);
     await tester.enterText(
       find.byKey(const ValueKey('new-group-name')),
       'Wyjazd',
