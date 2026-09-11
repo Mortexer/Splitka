@@ -527,16 +527,11 @@ class _AddItemFormState extends State<AddItemForm> {
             ],
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: widget.members.map((person) {
-              return PersonChip(
-                person: person,
-                selected: _participantIds.contains(person.id),
-                onPressed: () => _toggleParticipant(person.id),
-              );
-            }).toList(),
+          ParticipantMultiSelector(
+            members: widget.members,
+            selectedIds: _participantIds,
+            onChanged: (participantIds) =>
+                setState(() => _participantIds = participantIds),
           ),
           const SizedBox(height: 12),
           Row(
@@ -574,18 +569,6 @@ class _AddItemFormState extends State<AddItemForm> {
         ],
       ),
     );
-  }
-
-  void _toggleParticipant(String personId) {
-    setState(() {
-      if (_participantIds.contains(personId)) {
-        _participantIds = _participantIds
-            .where((id) => id != personId)
-            .toList();
-      } else {
-        _participantIds = [..._participantIds, personId];
-      }
-    });
   }
 
   Future<void> _submit(int? amountCents) async {
@@ -775,18 +758,19 @@ class _ItemCardState extends State<ItemCard> {
             ),
           if (!widget.assignment.skipped) ...[
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: widget.members.map((person) {
-                return PersonChip(
-                  person: person,
-                  selected: widget.assignment.participantIds.contains(
-                    person.id,
-                  ),
-                  onPressed: () => widget.onTogglePerson(person.id),
-                );
-              }).toList(),
+            ParticipantMultiSelector(
+              members: widget.members,
+              selectedIds: widget.assignment.participantIds,
+              onChanged: (participantIds) {
+                final before = widget.assignment.participantIds.toSet();
+                final after = participantIds.toSet();
+                for (final personId in before.difference(after)) {
+                  widget.onTogglePerson(personId);
+                }
+                for (final personId in after.difference(before)) {
+                  widget.onTogglePerson(personId);
+                }
+              },
             ),
           ],
           const SizedBox(height: 11),

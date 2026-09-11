@@ -203,6 +203,8 @@ void main() {
       receipts: const [],
       updatedAt: 1,
     );
+    var selectedPayerId = members.first.id;
+    var selectedIds = members.map((person) => person.id).toList();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -215,7 +217,13 @@ void main() {
                 PersonSelector(
                   members: members,
                   selectedId: members.first.id,
-                  onSelected: (_) {},
+                  onSelected: (personId) => selectedPayerId = personId,
+                ),
+                const SizedBox(height: 12),
+                ParticipantMultiSelector(
+                  members: members,
+                  selectedIds: selectedIds,
+                  onChanged: (next) => selectedIds = next,
                 ),
                 const SizedBox(height: 12),
                 SettlementCard(
@@ -230,7 +238,22 @@ void main() {
     );
 
     expect(find.text('Osoba 1'), findsWidgets);
-    expect(find.byType(ListView), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('single-person-picker')), findsOneWidget);
+    expect(find.byKey(const ValueKey('multi-person-picker')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('single-person-picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('picker-person-member-3')));
+    await tester.pumpAndSettle();
+    expect(selectedPayerId, 'member-3');
+
+    await tester.tap(find.byKey(const ValueKey('multi-person-picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('picker-person-member-0')));
+    await tester.tap(find.text('Zastosuj'));
+    await tester.pumpAndSettle();
+    expect(selectedIds, hasLength(7));
+    expect(selectedIds, isNot(contains('member-0')));
     expect(tester.takeException(), isNull);
   });
 

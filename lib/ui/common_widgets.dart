@@ -360,6 +360,46 @@ class PersonSelector extends StatelessWidget {
       );
     }
 
+    if (members.length > 5) {
+      final selected = members
+          .where((person) => person.id == selectedId)
+          .firstOrNull;
+      return OutlinedButton(
+        key: const ValueKey('single-person-picker'),
+        onPressed: () async {
+          final result = await _showPersonPicker(
+            context,
+            members: members,
+            selectedIds: {selectedId},
+            single: true,
+          );
+          if (result != null && result.isNotEmpty) onSelected(result.first);
+        },
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.text,
+          minimumSize: const Size.fromHeight(48),
+          alignment: Alignment.centerLeft,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            if (selected != null) PersonAvatar(person: selected, size: 28),
+            if (selected != null) const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                selected?.name ?? 'Wybierz osobę',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            const Icon(Icons.expand_more_rounded, color: AppColors.textMuted),
+          ],
+        ),
+      );
+    }
+
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -378,6 +418,289 @@ class PersonSelector extends StatelessWidget {
       selected: selectedId == person.id,
       onPressed: () => onSelected(person.id),
     );
+  }
+}
+
+class ParticipantMultiSelector extends StatelessWidget {
+  const ParticipantMultiSelector({
+    super.key,
+    required this.members,
+    required this.selectedIds,
+    required this.onChanged,
+  });
+
+  final List<Person> members;
+  final List<String> selectedIds;
+  final ValueChanged<List<String>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (members.length <= 5) {
+      return Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        children: members.map((person) {
+          return PersonChip(
+            person: person,
+            selected: selectedIds.contains(person.id),
+            onPressed: () {
+              final next = selectedIds.contains(person.id)
+                  ? selectedIds.where((id) => id != person.id).toList()
+                  : [...selectedIds, person.id];
+              onChanged(next);
+            },
+          );
+        }).toList(),
+      );
+    }
+
+    final selectedMembers = members
+        .where((person) => selectedIds.contains(person.id))
+        .toList(growable: false);
+    return OutlinedButton(
+      key: const ValueKey('multi-person-picker'),
+      onPressed: () async {
+        final result = await _showPersonPicker(
+          context,
+          members: members,
+          selectedIds: selectedIds.toSet(),
+        );
+        if (result != null) onChanged(result);
+      },
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.text,
+        minimumSize: const Size.fromHeight(48),
+        alignment: Alignment.centerLeft,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          MemberAvatarStack(members: selectedMembers),
+          if (selectedMembers.isNotEmpty) const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${selectedMembers.length} z ${members.length} osób',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const Icon(Icons.tune_rounded, color: AppColors.textMuted, size: 19),
+        ],
+      ),
+    );
+  }
+}
+
+Future<List<String>?> _showPersonPicker(
+  BuildContext context, {
+  required List<Person> members,
+  required Set<String> selectedIds,
+  bool single = false,
+}) {
+  return showModalBottomSheet<List<String>>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: AppColors.card,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+    ),
+    builder: (_) => _PersonPickerSheet(
+      members: members,
+      selectedIds: selectedIds,
+      single: single,
+    ),
+  );
+}
+
+class _PersonPickerSheet extends StatefulWidget {
+  const _PersonPickerSheet({
+    required this.members,
+    required this.selectedIds,
+    required this.single,
+  });
+
+  final List<Person> members;
+  final Set<String> selectedIds;
+  final bool single;
+
+  @override
+  State<_PersonPickerSheet> createState() => _PersonPickerSheetState();
+}
+
+class _PersonPickerSheetState extends State<_PersonPickerSheet> {
+  final _searchController = TextEditingController();
+  late Set<String> _selectedIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIds = {...widget.selectedIds};
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+    final visibleMembers = widget.members
+        .where(
+          (person) =>
+              query.isEmpty || person.name.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+    final height = (MediaQuery.sizeOf(context).height * 0.78).clamp(
+      360.0,
+      640.0,
+    );
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SizedBox(
+        height: height,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.single ? 'Wybierz płatnika' : 'Wybierz osoby',
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  if (!widget.single)
+                    Text(
+                      '${_selectedIds.length}/${widget.members.length}',
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  IconButton(
+                    tooltip: 'Zamknij',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            if (widget.members.length > 8)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: TextField(
+                  key: const ValueKey('person-search'),
+                  controller: _searchController,
+                  autofocus: false,
+                  decoration: const InputDecoration(
+                    hintText: 'Szukaj osoby',
+                    prefixIcon: Icon(Icons.search_rounded),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            if (!widget.single)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryActionButton(
+                        label: 'Wszyscy',
+                        icon: Icons.group_rounded,
+                        onPressed: () => setState(
+                          () => _selectedIds = {
+                            for (final person in widget.members) person.id,
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SecondaryActionButton(
+                        label: 'Nikt',
+                        icon: Icons.block_rounded,
+                        onPressed: () => setState(() => _selectedIds.clear()),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                key: const ValueKey('person-picker-list'),
+                itemCount: visibleMembers.length,
+                itemBuilder: (context, index) {
+                  final person = visibleMembers[index];
+                  final selected = _selectedIds.contains(person.id);
+                  return ListTile(
+                    key: ValueKey('picker-person-${person.id}'),
+                    leading: PersonAvatar(person: person, size: 32),
+                    title: Text(
+                      person.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: widget.single
+                        ? Icon(
+                            selected
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.textMuted,
+                          )
+                        : Checkbox(
+                            value: selected,
+                            onChanged: (_) => _toggle(person.id),
+                          ),
+                    onTap: () {
+                      if (widget.single) {
+                        Navigator.of(context).pop([person.id]);
+                      } else {
+                        _toggle(person.id);
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+            if (!widget.single)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: PrimaryActionButton(
+                  label: 'Zastosuj',
+                  icon: Icons.check_rounded,
+                  onPressed: () => Navigator.of(context).pop(
+                    widget.members
+                        .where((person) => _selectedIds.contains(person.id))
+                        .map((person) => person.id)
+                        .toList(),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _toggle(String personId) {
+    setState(() {
+      if (!_selectedIds.add(personId)) _selectedIds.remove(personId);
+    });
   }
 }
 
