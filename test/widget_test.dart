@@ -295,6 +295,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('creates and switches between groups on a small screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final controller = HouseholdController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(SplitkaApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('open-group-switcher')));
+    await tester.pumpAndSettle();
+    expect(find.text('Twoje grupy'), findsOneWidget);
+
+    await tester.tap(find.text('Nowa grupa'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('new-group-name')),
+      'Wyjazd',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Utwórz'));
+    await tester.pumpAndSettle();
+    expect(controller.error, isNull);
+    expect(controller.household.name, 'Wyjazd');
+    expect(find.text('WYJAZD'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('open-group-switcher')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stancja'));
+    await tester.pumpAndSettle();
+    expect(find.text('STANCJA'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final size in [const Size(320, 700), const Size(390, 844)]) {
     testWidgets(
       'invitation dialog fits $size and shows invalid code feedback',

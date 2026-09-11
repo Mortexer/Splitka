@@ -19,6 +19,9 @@ class HouseholdController extends ChangeNotifier {
   final FirebaseStore _firebaseStore;
 
   Household household = createDefaultHousehold();
+  List<StoredGroup> groups = const [
+    StoredGroup(id: defaultRoomCode, name: defaultGroupName, isCloud: false),
+  ];
   String roomCode = defaultRoomCode;
   SyncState syncState = SyncState.loading;
   String? error;
@@ -27,7 +30,6 @@ class HouseholdController extends ChangeNotifier {
   bool connectingRoom = false;
 
   String? _cloudRoomId;
-  String _localRoomCode = defaultRoomCode;
   int _revision = 0;
   int _generation = 0;
   int _pendingChanges = 0;
@@ -36,20 +38,25 @@ class HouseholdController extends ChangeNotifier {
   StreamSubscription<RemoteHouseholdChange?>? _remoteSubscription;
 
   bool get isCloudRoom => _cloudRoomId != null;
+  StoredGroup get currentGroup => groups.firstWhere(
+    (group) => group.id == roomCode,
+    orElse: () => groups.first,
+  );
   bool get canUseCloud => _firebaseStore.isConfigured;
   bool get busy => connectingRoom || _pendingChanges > 0;
 
   Future<void> boot() async {
     final generation = ++_generation;
     try {
-      _localRoomCode = await _localStore.loadPersistedRoomCode();
-      final cloudRoom = await _localStore.loadCloudRoomId();
-      final snapshot = await _localStore.loadHouseholdSnapshot(
-        cloudRoom ?? _localRoomCode,
+      final directory = await _localStore.loadGroupDirectory();
+      final selected = directory.groups.firstWhere(
+        (group) => group.id == directory.activeGroupId,
       );
+      final snapshot = await _localStore.loadHouseholdSnapshot(selected.id);
       if (!_isCurrent(generation)) return;
-      _cloudRoomId = cloudRoom;
-      roomCode = cloudRoom ?? _localRoomCode;
+      groups = directory.groups;
+      _cloudRoomId = selected.isCloud ? selected.id : null;
+      roomCode = selected.id;
       household = snapshot.household.copyWith(id: roomCode);
       _revision = snapshot.revision;
       inviteCode = snapshot.inviteCode;
@@ -71,6 +78,103 @@ class HouseholdController extends ChangeNotifier {
 
   Future<bool> joinCloudRoom(String code) {
     return _changeRoom(() => _firebaseStore.joinHousehold(code));
+  }
+
+  Future<bool> createLocalGroup(String name) async {
+    if (busy || !loaded) return false;
+    connectingRoom = true;
+    error = null;
+    _notify();
+    var generation = _generation;
+    try {
+      final id = _newLocalGroupId();
+      final next = renameGroup(createDefaultHousehold(id), name);
+      final entry = StoredGroup(id: id, name: next.name, isCloud: false);
+      final nextGroups = [...groups, entry];
+      generation = ++_generation;
+      await _remoteSubscription?.cancel();
+      await _localStore.saveHousehold(next);
+      await _localStore.saveGroupDirectory(nextGroups, id);
+      if (!_isCurrent(generation)) return false;
+      groups = nextGroups;
+      _cloudRoomId = null;
+      roomCode = id;
+      household = next;
+      _revision = 0;
+      inviteCode = null;
+      syncState = SyncState.local;
+      return true;
+    } catch (createError) {
+      if (_isCurrent(generation)) _markError(createError);
+      return false;
+    } finally {
+      connectingRoom = false;
+      _notify();
+    }
+  }
+
+  Future<bool> switchGroup(String groupId) async {
+    if (busy || !loaded) return false;
+    final target = groups.where((group) => group.id == groupId).firstOrNull;
+    if (target == null) return false;
+    if (target.id == roomCode) return true;
+    connectingRoom = true;
+    error = null;
+    final generation = ++_generation;
+    _notify();
+    try {
+      await _remoteSubscription?.cancel();
+      final snapshot = await _localStore.loadHouseholdSnapshot(target.id);
+      await _localStore.saveGroupDirectory(groups, target.id);
+      if (!_isCurrent(generation)) return false;
+      _cloudRoomId = target.isCloud ? target.id : null;
+      roomCode = target.id;
+      household = snapshot.household.copyWith(id: target.id);
+      _revision = snapshot.revision;
+      inviteCode = snapshot.inviteCode;
+      syncState = target.isCloud ? SyncState.connecting : SyncState.local;
+      _notify();
+      if (target.isCloud) await _connectRemote(generation);
+      return true;
+    } catch (switchError) {
+      if (_isCurrent(generation)) _markError(switchError);
+      return false;
+    } finally {
+      connectingRoom = false;
+      _notify();
+    }
+  }
+
+  Future<bool> removeGroup(String groupId) async {
+    if (busy || !loaded) return false;
+    if (groups.length <= 1) {
+      _markError(const FormatException('Musi zostać co najmniej jedna grupa.'));
+      return false;
+    }
+    if (groupId == roomCode) {
+      _markError(const FormatException('Najpierw przełącz się na inną grupę.'));
+      return false;
+    }
+    connectingRoom = true;
+    error = null;
+    _notify();
+    try {
+      final nextGroups = groups
+          .where((group) => group.id != groupId)
+          .toList(growable: false);
+      await _localStore.saveGroupDirectory(nextGroups, roomCode);
+      await _localStore.deleteHousehold(groupId);
+      groups = nextGroups;
+      error = null;
+      _notify();
+      return true;
+    } catch (removeError) {
+      _markError(removeError);
+      return false;
+    } finally {
+      connectingRoom = false;
+      _notify();
+    }
   }
 
   Future<bool> renameCurrentGroup(String name) {
@@ -117,12 +221,20 @@ class HouseholdController extends ChangeNotifier {
         revision: room.revision,
         inviteCode: room.inviteCode,
       );
-      await _localStore.saveCloudRoomId(room.household.id);
+      final nextGroups = _upsertGroup(
+        StoredGroup(
+          id: room.household.id,
+          name: room.household.name,
+          isCloud: true,
+        ),
+      );
+      await _localStore.saveGroupDirectory(nextGroups, room.household.id);
       if (!_isCurrent(generation)) return false;
       final nextGeneration = ++_generation;
       await _remoteSubscription?.cancel();
       if (!_isCurrent(nextGeneration)) return false;
       _cloudRoomId = room.household.id;
+      groups = nextGroups;
       roomCode = room.household.id;
       household = room.household;
       _revision = room.revision;
@@ -141,31 +253,9 @@ class HouseholdController extends ChangeNotifier {
   }
 
   Future<bool> useLocalMode() async {
-    if (busy) return false;
-    connectingRoom = true;
-    final generation = _generation;
-    try {
-      final snapshot = await _localStore.loadHouseholdSnapshot(_localRoomCode);
-      await _localStore.saveCloudRoomId(null);
-      if (!_isCurrent(generation)) return false;
-      final nextGeneration = ++_generation;
-      await _remoteSubscription?.cancel();
-      if (!_isCurrent(nextGeneration)) return false;
-      _cloudRoomId = null;
-      roomCode = _localRoomCode;
-      household = snapshot.household;
-      _revision = 0;
-      inviteCode = null;
-      error = null;
-      syncState = SyncState.local;
-      return true;
-    } catch (localError) {
-      if (!_disposed) _markError(localError);
-      return false;
-    } finally {
-      connectingRoom = false;
-      _notify();
-    }
+    final local = groups.where((group) => !group.isCloud).firstOrNull;
+    if (local == null) return createLocalGroup(defaultGroupName);
+    return switchGroup(local.id);
   }
 
   Future<bool> commit(Household Function(Household current) updater) {
@@ -186,7 +276,10 @@ class HouseholdController extends ChangeNotifier {
             updatedAt: DateTime.now().millisecondsSinceEpoch,
           );
           await _localStore.saveHousehold(next);
+          final nextGroups = _groupsWithCurrentName(next.name);
+          await _localStore.saveGroupDirectory(nextGroups, roomCode);
           if (!_isCurrent(generation)) return false;
+          groups = nextGroups;
           household = next;
           syncState = SyncState.local;
         } else {
@@ -252,6 +345,7 @@ class HouseholdController extends ChangeNotifier {
       return;
     }
     household = change.household;
+    groups = _groupsWithCurrentName(change.household.name);
     _revision = change.revision;
     inviteCode = change.inviteCode;
     syncState = change.hasPendingWrites
@@ -262,19 +356,33 @@ class HouseholdController extends ChangeNotifier {
     error = null;
     _notify();
     unawaited(
-      _localStore
-          .saveHousehold(
-            change.household,
-            revision: change.revision,
-            inviteCode: change.inviteCode,
-          )
-          .catchError((Object saveError) {
-            if (_isCurrent(generation)) _markError(saveError);
-          }),
+      Future.wait<void>([
+        _localStore.saveHousehold(
+          change.household,
+          revision: change.revision,
+          inviteCode: change.inviteCode,
+        ),
+        _localStore.saveGroupDirectory(groups, roomCode),
+      ]).then<void>((_) {}).catchError((Object saveError) {
+        if (_isCurrent(generation)) _markError(saveError);
+      }),
     );
   }
 
   bool _isCurrent(int generation) => !_disposed && generation == _generation;
+
+  List<StoredGroup> _upsertGroup(StoredGroup next) {
+    final without = groups.where((group) => group.id != next.id);
+    return [...without, next];
+  }
+
+  List<StoredGroup> _groupsWithCurrentName(String name) {
+    return groups
+        .map(
+          (group) => group.id == roomCode ? group.copyWith(name: name) : group,
+        )
+        .toList(growable: false);
+  }
 
   void _markError(Object nextError) {
     error = describeConnectionError(nextError);
@@ -293,6 +401,10 @@ class HouseholdController extends ChangeNotifier {
     unawaited(_remoteSubscription?.cancel());
     super.dispose();
   }
+}
+
+String _newLocalGroupId() {
+  return 'local-${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
 }
 
 String describeConnectionError(Object error) {

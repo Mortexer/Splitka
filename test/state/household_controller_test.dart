@@ -252,6 +252,30 @@ void main() {
     expect(ola.active, isFalse);
   });
 
+  test('creates and switches local groups without mixing their data', () async {
+    await controller.boot();
+    final homeId = controller.roomCode;
+
+    expect(await controller.createLocalGroup('Wyjazd'), isTrue);
+    final tripId = controller.roomCode;
+    expect(tripId, isNot(homeId));
+    expect(controller.groups, hasLength(2));
+    expect(controller.household.name, 'Wyjazd');
+    expect(
+      await controller.commit(
+        (household) => household.copyWith(receipts: [receipt('Trip')]),
+      ),
+      isTrue,
+    );
+
+    expect(await controller.switchGroup(homeId), isTrue);
+    expect(controller.household.receipts, isEmpty);
+    expect(await controller.switchGroup(tripId), isTrue);
+    expect(controller.household.receipts.single.title, 'Trip');
+    expect(await controller.removeGroup(homeId), isTrue);
+    expect(controller.groups.single.id, tripId);
+  });
+
   test(
     'resumes the saved cloud room and revision without overwriting it',
     () async {

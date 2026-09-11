@@ -9,6 +9,7 @@ Domyslne osoby: Danus, Kubus, Damian. Android i iOS, bez Expo.
 - Dzieli kazda pozycje na wybrane osoby albo pomija ja w rozliczeniu.
 - Ma osobna zakladke list zakupow: wspolna oraz po jednej dla kazdej aktywnej osoby.
 - Pozwala nazwac grupe oraz dodawac, edytowac i dezaktywowac do 20 osob.
+- Obsluguje wiele niezaleznych grup i szybkie przelaczanie z naglowka.
 - Pozwala dodawac, odhaczac i usuwac produkty z list zakupow.
 - Kaucje pokazuje informacyjnie, zwroty opakowan zmniejszaja kwote.
 - Liczy w groszach, kto komu ma oddac pieniadze.
@@ -33,8 +34,9 @@ flutter devices
 flutter run -d ID_URZADZENIA
 ```
 
-Nowa instalacja zaczyna z rachunkami lokalnymi. Przycisk Grupa pozwala zarzadzac
-uczestnikami, a sekcja udostepniania tworzy grupe w chmurze lub dolacza do niej.
+Nowa instalacja zaczyna z rachunkami lokalnymi. Nazwa w naglowku otwiera liste
+grup, a przycisk Grupa pozwala zarzadzac uczestnikami. Sekcja udostepniania
+tworzy grupe w chmurze lub dolacza do niej.
 Tylko jedna osoba tworzy grupe w chmurze; pozostali wklejaja jej kod.
 [Firebase: konfiguracja, wdrozenie i testy](docs/FIREBASE.md).
 

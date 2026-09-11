@@ -8,6 +8,7 @@ import '../domain/shopping_lists.dart';
 import '../state/household_controller.dart';
 import 'common_widgets.dart';
 import 'group_settings_screen.dart';
+import 'group_switcher_sheet.dart';
 import 'shopping_lists_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -70,6 +71,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _Header(
                 controller: controller,
                 selectedTab: _selectedTab,
+                onGroupPressed: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  backgroundColor: AppColors.card,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(8),
+                    ),
+                  ),
+                  builder: (_) => GroupSwitcherSheet(controller: controller),
+                ),
                 onRoomPressed: () => Navigator.of(context).push<void>(
                   MaterialPageRoute(
                     builder: (_) => GroupSettingsScreen(controller: controller),
@@ -224,11 +237,13 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.controller,
     required this.selectedTab,
+    required this.onGroupPressed,
     required this.onRoomPressed,
   });
 
   final HouseholdController controller;
   final int selectedTab;
+  final VoidCallback onGroupPressed;
   final VoidCallback onRoomPressed;
 
   @override
@@ -265,31 +280,51 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        showingLists ? 'Listy zakupów' : 'Splitka',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  child: InkWell(
+                    key: const ValueKey('open-group-switcher'),
+                    onTap: controller.busy ? null : onGroupPressed,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            showingLists ? 'Listy zakupów' : 'Splitka',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.text,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  household.name.toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 3),
+                              const Icon(
+                                Icons.expand_more_rounded,
+                                color: AppColors.textMuted,
+                                size: 15,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      Text(
-                        household.name.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
                 SyncBadge(

@@ -17,6 +17,7 @@ Funkcje commitujemy osobno i wysylamy do Mortexer/Splitka.
   jednej dla kazdego domownika, z dodawaniem, odhaczaniem i usuwaniem pozycji.
 - Dowolna nazwa grupy oraz zarzadzanie maksymalnie 20 osobami: dodawanie,
   zmiana nazwy i koloru, dezaktywowanie i bezpieczne usuwanie.
+- Wiele niezaleznych grup lokalnych i chmurowych z szybkim przelaczaniem.
 - Testy kontrolera, formularzy i regul, w tym jednoczesny zapis dwoch klientow.
 
 Nowa instalacja przechowuje rachunki lokalnie, dopoki nie utworzysz mieszkania
