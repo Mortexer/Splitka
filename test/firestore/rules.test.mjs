@@ -13,7 +13,7 @@ import {
 
 const projectId = 'demo-splitka';
 const roomId = 'room-one';
-const code = '0123456789abcdef0123456789abcdef';
+const code = '1234';
 let env;
 
 before(async () => {
@@ -193,6 +193,7 @@ test('codes cannot be listed or used to join another household', async () => {
   await createRoom('another-owner', 'another-room', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
   await assertFails(getDocs(collection(db('owner'), 'invites')));
   await assertFails(getDocs(collection(db('owner'), 'households')));
+  await assertFails(getDoc(doc(db('owner'), 'invites', '123')));
   await assertFails(join('outsider', code, 'another-room'));
   await assertFails(join('outsider', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'));
 });

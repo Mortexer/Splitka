@@ -10,7 +10,7 @@ import 'package:splitka_flutter/state/household_controller.dart';
 import 'package:splitka_flutter/storage/firebase_store.dart';
 import 'package:splitka_flutter/storage/local_store.dart';
 
-const code = '0123456789abcdef0123456789abcdef';
+const code = '1234';
 
 Receipt receipt(String name) => createManualReceipt(
   defaultMembers,

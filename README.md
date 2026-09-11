@@ -13,7 +13,7 @@ Domyslne osoby: Danus, Kubus, Damian. Android i iOS, bez Expo.
 - Kaucje pokazuje informacyjnie, zwroty opakowan zmniejszaja kwote.
 - Liczy w groszach, kto komu ma oddac pieniadze.
 - Zapisuje dane lokalnie; pozwala tworzyc wspolne mieszkanie w Firebase
-  i dolaczac przez prywatny, losowy kod zaproszenia. Rachunki i listy zakupow
+  i dolaczac przez prywatny, czterocyfrowy kod zaproszenia. Rachunki i listy zakupow
   synchronizuja sie w ramach tego samego mieszkania.
 - Korzysta z anonimowej tozsamosci, bez ekranu rejestracji.
 - Synchronizuje zmiany online transakcjami, zachowuje ostatni podglad offline.

@@ -40,7 +40,7 @@ w repo nie zmienia regul w chmurze.
 1. Zainstaluj APK lub uruchom projekt na iPhonie przez Xcode.
 2. Na jednym telefonie otworz Mieszkanie i wybierz Utworz mieszkanie.
    Lokalne rachunki tego telefonu trafia do nowego wspolnego mieszkania.
-3. Otworz Mieszkanie ponownie i skopiuj kod zaproszenia.
+3. Otworz Grupe ponownie i skopiuj czterocyfrowy kod zaproszenia.
 4. Przeslij go prywatnie wspollokatorom. Na pozostalych telefonach wklej kod
    i wybierz Dolacz do mieszkania. Nie tworzcie trzech osobnych mieszkan.
 5. Dodaj probny rachunek i zmien jego podzial na drugim telefonie.
@@ -57,7 +57,7 @@ telefonow. Powrot do lokalnych nie usuwa rachunkow w chmurze ani czlonkostwa.
 - `/households/{id}`: mieszkanie, rachunki, listy zakupow i rosnaca rewizja,
   schemat 2. Lista `common` jest wspolna, pozostale maja ID domownikow.
 - `/households/{id}/members/{uid}`: uprawnienie anonimowej instalacji.
-- `/invites/{code}`: losowe zaproszenie 128-bit, bez mozliwosci listowania.
+- `/invites/{code}`: nowy kod ma 4 cyfry; stare kody 128-bit nadal dzialaja.
 - Tylko czlonkowie czytaja i zmieniaja mieszkanie. Kazdy ma takie same prawa
   do rachunkow. Nazwa osoby w podziale nie jest kontem logowania.
 - Utworzenie mieszkania, czlonkostwa i zaproszenia jest atomowe.
@@ -71,7 +71,8 @@ telefonow. Powrot do lokalnych nie usuwa rachunkow w chmurze ani czlonkostwa.
 - Na tym etapie mieszkanie jest jednym dokumentem Firestore (limit 1 MiB,
   dodatkowo reguly dopuszczaja do 500 rachunkow). Podzial na mniejsze rekordy,
   migracja i kolejka offline sa osobnym etapem planu.
-- Zaproszenia nie maja jeszcze wygaszania/rotacji, a sklad domownikow jest staly.
+- Zaproszenia nie maja jeszcze wygaszania ani rotacji. Czterocyfrowy kod jest
+  wygodny, ale mozliwy do odgadniecia, dlatego nie nadaje sie do wrazliwych danych.
 
 ## Konfiguracja aplikacji
 

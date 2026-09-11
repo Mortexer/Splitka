@@ -64,26 +64,43 @@ class FirebaseStore {
     final firestore = _firestore!;
     final uid = _auth!.currentUser!.uid;
     final room = firestore.collection(collection).doc();
-    final code = createInviteCode();
     final household = seed.copyWith(id: room.id);
-    final data = _encode(household, uid, 1)
-      ..addAll({'createdBy': uid, 'inviteCode': code});
 
     // Transactions require the server and cannot queue a surprise room creation
     // for later when a phone is offline.
-    await firestore.runTransaction<void>((transaction) async {
-      transaction.set(room, data);
-      transaction.set(room.collection('members').doc(uid), {
-        'uid': uid,
-        'inviteCode': code,
-        'joinedAt': FieldValue.serverTimestamp(),
-      });
-      transaction.set(firestore.collection('invites').doc(code), {
-        'roomId': room.id,
-        'createdBy': uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }, timeout: const Duration(seconds: 15));
+    String? code;
+    for (var attempt = 0; attempt < 10 && code == null; attempt++) {
+      final candidate = createInviteCode();
+      final invite = firestore.collection('invites').doc(candidate);
+      try {
+        await firestore.runTransaction<void>((transaction) async {
+          if ((await transaction.get(invite)).exists) {
+            throw const _InviteCodeCollision();
+          }
+          final data = _encode(household, uid, 1)
+            ..addAll({'createdBy': uid, 'inviteCode': candidate});
+          transaction.set(room, data);
+          transaction.set(room.collection('members').doc(uid), {
+            'uid': uid,
+            'inviteCode': candidate,
+            'joinedAt': FieldValue.serverTimestamp(),
+          });
+          transaction.set(invite, {
+            'roomId': room.id,
+            'createdBy': uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }, timeout: const Duration(seconds: 15));
+        code = candidate;
+      } on _InviteCodeCollision {
+        continue;
+      }
+    }
+    if (code == null) {
+      throw const FormatException(
+        'Nie udało się znaleźć wolnego kodu. Spróbuj ponownie.',
+      );
+    }
 
     return RemoteHouseholdChange(
       household: household,
@@ -191,7 +208,7 @@ class FirebaseStore {
         revision < 1 ||
         code is! String ||
         raw['id'] != snapshot.id) {
-      throw const FormatException('Nieprawidłowe dane mieszkania.');
+      throw const FormatException('Nieprawidłowe dane grupy.');
     }
     return RemoteHouseholdChange(
       household: Household.fromJson(Map<String, dynamic>.from(raw)),
@@ -204,17 +221,19 @@ class FirebaseStore {
 }
 
 String createInviteCode() {
-  final random = Random.secure();
-  return List.generate(
-    16,
-    (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
-  ).join();
+  return Random.secure().nextInt(10000).toString().padLeft(4, '0');
 }
 
 String normalizeInviteCode(String input) {
   final code = input.trim().toLowerCase().replaceAll(RegExp(r'[\s-]'), '');
-  if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(code)) {
-    throw const FormatException('Wklej pełny kod zaproszenia do mieszkania.');
+  final isCurrent = RegExp(r'^[0-9]{4}$').hasMatch(code);
+  final isLegacy = RegExp(r'^[a-f0-9]{32}$').hasMatch(code);
+  if (!isCurrent && !isLegacy) {
+    throw const FormatException('Wpisz 4-cyfrowy kod zaproszenia.');
   }
   return code;
+}
+
+class _InviteCodeCollision implements Exception {
+  const _InviteCodeCollision();
 }

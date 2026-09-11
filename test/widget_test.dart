@@ -293,7 +293,7 @@ void main() {
         await tester.enterText(find.byType(TextField), 'stancja');
         await tester.tap(find.text('Dołącz do grupy'));
         await tester.pumpAndSettle();
-        expect(find.textContaining('Wklej pełny kod'), findsOneWidget);
+        expect(find.textContaining('Wpisz 4-cyfrowy kod'), findsOneWidget);
         expect(controller.isCloudRoom, isFalse);
         expect(tester.takeException(), isNull);
       },

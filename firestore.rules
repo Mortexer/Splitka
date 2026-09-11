@@ -12,7 +12,8 @@ service cloud.firestore {
     }
 
     function validCode(code) {
-      return code is string && code.matches('^[a-f0-9]{32}$');
+      return code is string
+        && code.matches('^([0-9]{4}|[a-f0-9]{32})$');
     }
 
     function validRoom(data, roomId) {
@@ -82,7 +83,7 @@ service cloud.firestore {
       }
     }
 
-    // Knowing an unguessable invite permits joining, but never listing rooms.
+    // A valid invite permits joining, but never listing rooms.
     match /invites/{code} {
       allow get: if signedIn() && validCode(code);
       allow list, update, delete: if false;

@@ -52,7 +52,11 @@ class _RoomDialogState extends State<RoomDialog> {
                 const SizedBox(height: 8),
                 SelectableText(
                   controller.inviteCode!,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 Align(
                   alignment: Alignment.centerRight,
@@ -98,9 +102,12 @@ class _RoomDialogState extends State<RoomDialog> {
                 enabled: !_working && controller.canUseCloud,
                 autocorrect: false,
                 enableSuggestions: false,
-                maxLength: 64,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 32,
                 decoration: const InputDecoration(
                   labelText: 'Kod zaproszenia',
+                  hintText: '0000',
                   counterText: '',
                 ),
                 onSubmitted: (_) =>
