@@ -6,7 +6,8 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-splitka \"node --test test/firestore/rules.test.mjs\"",
     "firebase:check": "node tool/check_firebase.mjs",
     "firebase:login": "firebase login",
-    "firebase:deploy": "firebase deploy --only firestore:rules --project splitka-18560"
+    "firebase:deploy": "firebase deploy --only firestore:rules --project splitka-18560",
+    "firebase:deploy:functions": "firebase deploy --only functions --project splitka-18560"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",

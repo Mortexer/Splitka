@@ -106,6 +106,23 @@ test('a known invite lets a second roommate join and edit with equal rights', as
   assert.equal(result.data().household.receipts.length, 1);
 });
 
+test('members can manage only their own notification device', async () => {
+  await createRoom();
+  await join('roommate');
+  const owner = db('owner');
+  const device = doc(owner, 'households', roomId, 'notificationDevices', 'owner');
+  await assertSucceeds(setDoc(device, {
+    uid: 'owner', token: 'x'.repeat(40), memberId: 'danus',
+    platform: 'android', updatedAt: serverTimestamp(),
+  }));
+  await assertFails(getDocs(collection(owner, 'households', roomId, 'notificationDevices')));
+  await assertFails(setDoc(doc(db('roommate'), 'households', roomId, 'notificationDevices', 'owner'), {
+    uid: 'owner', token: 'y'.repeat(40), memberId: 'danus',
+    platform: 'android', updatedAt: serverTimestamp(),
+  }));
+  await assertSucceeds(deleteDoc(device));
+});
+
 test('roommates can update shopping lists but malformed lists are rejected', async () => {
   await createRoom();
   await join('roommate');

@@ -66,6 +66,7 @@ class LocalStore {
   static const _cloudRoomIdKey = 'splitka.cloudRoomId';
   static const _groupsKey = 'splitka.groups.v1';
   static const _activeGroupIdKey = 'splitka.activeGroupId';
+  static const _notificationMemberPrefix = 'splitka.notificationMember.';
   Future<void> _writes = Future.value();
 
   Future<String?> loadCloudRoomId() async {
@@ -243,6 +244,21 @@ class LocalStore {
         'client-${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}';
     await prefs.setString(_clientIdKey, clientId);
     return clientId;
+  }
+
+  Future<String?> loadNotificationMember(String roomId) async {
+    return (await SharedPreferences.getInstance()).getString(
+      '$_notificationMemberPrefix$roomId',
+    );
+  }
+
+  Future<void> saveNotificationMember(String roomId, String? memberId) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (memberId == null) {
+      await prefs.remove('$_notificationMemberPrefix$roomId');
+    } else {
+      await prefs.setString('$_notificationMemberPrefix$roomId', memberId);
+    }
   }
 
   String _householdKey(String roomCode) {

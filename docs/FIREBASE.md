@@ -133,3 +133,17 @@ Dokumentacja: [Flutter](https://firebase.google.com/docs/flutter/setup),
 [Auth](https://firebase.google.com/docs/auth/flutter/anonymous-auth),
 [transakcje](https://firebase.google.com/docs/firestore/manage-data/transactions),
 [testowanie regul](https://firebase.google.com/docs/rules/unit-tests).
+# Powiadomienia push
+
+Powiadomienia używają Firebase Cloud Messaging oraz funkcji
+`notifyHouseholdUpdate` z katalogu `functions/`. Telefon zapisuje swój token
+wyłącznie po włączeniu powiadomień i wybraniu osoby w ustawieniach wspólnej grupy.
+
+Cloud Functions wymagają planu Blaze. Po podpięciu rozliczeń wdrożenie wykonuje:
+
+```powershell
+npm.cmd run firebase:deploy:functions
+```
+
+Na iOS trzeba dodatkowo w projekcie Firebase wgrać klucz APNs z konta Apple
+Developer, a w Xcode zachować capability Push Notifications.

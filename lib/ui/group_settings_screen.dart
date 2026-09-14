@@ -76,6 +76,10 @@ class GroupSettingsScreen extends StatelessWidget {
                             builder: (_) => RoomDialog(controller: controller),
                           ),
                         ),
+                        if (controller.isCloudRoom) ...[
+                          const SizedBox(height: 12),
+                          _NotificationsCard(controller: controller),
+                        ],
                         if (controller.error != null) ...[
                           const SizedBox(height: 12),
                           Text(
@@ -470,6 +474,121 @@ class _SharingCard extends StatelessWidget {
             onPressed: controller.busy ? () {} : onPressed,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NotificationsCard extends StatelessWidget {
+  const _NotificationsCard({required this.controller});
+
+  final HouseholdController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = controller.notificationMemberId;
+    final selectedPerson = controller.household.members
+        .where((person) => person.id == selected)
+        .firstOrNull;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'Powiadomienia',
+            meta: selectedPerson == null
+                ? 'WYŁĄCZONE'
+                : 'JAKO ${selectedPerson.name.toUpperCase()}',
+            icon: selectedPerson == null
+                ? Icons.notifications_none_rounded
+                : Icons.notifications_active_outlined,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Nowe rachunki i pozycje na wspólnej liście.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          if (selectedPerson == null)
+            SecondaryActionButton(
+              label: 'Włącz powiadomienia',
+              icon: Icons.notifications_active_outlined,
+              onPressed: controller.busy
+                  ? () {}
+                  : () => _chooseIdentity(context),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: SecondaryActionButton(
+                    label: 'Zmień osobę',
+                    icon: Icons.person_outline_rounded,
+                    onPressed: controller.busy
+                        ? () {}
+                        : () => _chooseIdentity(context),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Wyłącz powiadomienia',
+                  onPressed: controller.busy ? null : () => _disable(context),
+                  icon: const Icon(Icons.notifications_off_outlined),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _chooseIdentity(BuildContext context) async {
+    final memberId = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 12),
+          children: [
+            const ListTile(
+              title: Text('Kim jesteś?'),
+              subtitle: Text('Dzięki temu inni zobaczą, kto dodał wpis.'),
+            ),
+            for (final person in controller.household.activeMembers)
+              ListTile(
+                leading: PersonAvatar(person: person, size: 34),
+                title: Text(person.name),
+                onTap: () => Navigator.of(context).pop(person.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (memberId == null || !context.mounted) return;
+    final enabled = await controller.enableNotifications(memberId);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          enabled
+              ? 'Powiadomienia włączone.'
+              : 'Nie udało się włączyć powiadomień. Sprawdź zgodę w telefonie.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _disable(BuildContext context) async {
+    final disabled = await controller.disableNotifications();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          disabled
+              ? 'Powiadomienia wyłączone.'
+              : 'Nie udało się wyłączyć powiadomień.',
+        ),
       ),
     );
   }

@@ -5,18 +5,24 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/groups.dart';
 import '../domain/models.dart';
+import '../services/notification_service.dart';
 import '../storage/firebase_store.dart';
 import '../storage/local_store.dart';
 
 enum SyncState { loading, local, connecting, saving, online, offline, error }
 
 class HouseholdController extends ChangeNotifier {
-  HouseholdController({LocalStore? localStore, FirebaseStore? firebaseStore})
-    : _localStore = localStore ?? LocalStore(),
-      _firebaseStore = firebaseStore ?? FirebaseStore();
+  HouseholdController({
+    LocalStore? localStore,
+    FirebaseStore? firebaseStore,
+    NotificationService? notificationService,
+  }) : _localStore = localStore ?? LocalStore(),
+       _firebaseStore = firebaseStore ?? FirebaseStore(),
+       _notificationService = notificationService ?? NotificationService();
 
   final LocalStore _localStore;
   final FirebaseStore _firebaseStore;
+  final NotificationService _notificationService;
 
   Household household = createDefaultHousehold();
   List<StoredGroup> groups = const [
@@ -28,6 +34,7 @@ class HouseholdController extends ChangeNotifier {
   String? inviteCode;
   bool loaded = false;
   bool connectingRoom = false;
+  String? notificationMemberId;
 
   String? _cloudRoomId;
   int _revision = 0;
@@ -60,10 +67,16 @@ class HouseholdController extends ChangeNotifier {
       household = snapshot.household.copyWith(id: roomCode);
       _revision = snapshot.revision;
       inviteCode = snapshot.inviteCode;
+      notificationMemberId = await _localStore.loadNotificationMember(
+        selected.id,
+      );
       loaded = true;
       syncState = isCloudRoom ? SyncState.connecting : SyncState.local;
       _notify();
-      if (isCloudRoom) await _connectRemote(generation);
+      if (isCloudRoom) {
+        await _connectRemote(generation);
+        await _restoreNotifications();
+      }
     } catch (bootError) {
       if (_isCurrent(generation)) {
         loaded = true;
@@ -123,6 +136,7 @@ class HouseholdController extends ChangeNotifier {
       household = next;
       _revision = 0;
       inviteCode = null;
+      notificationMemberId = null;
       syncState = SyncState.local;
       return true;
     } catch (createError) {
@@ -153,9 +167,15 @@ class HouseholdController extends ChangeNotifier {
       household = snapshot.household.copyWith(id: target.id);
       _revision = snapshot.revision;
       inviteCode = snapshot.inviteCode;
+      notificationMemberId = await _localStore.loadNotificationMember(
+        target.id,
+      );
       syncState = target.isCloud ? SyncState.connecting : SyncState.local;
       _notify();
-      if (target.isCloud) await _connectRemote(generation);
+      if (target.isCloud) {
+        await _connectRemote(generation);
+        await _restoreNotifications();
+      }
       return true;
     } catch (switchError) {
       if (_isCurrent(generation)) _markError(switchError);
@@ -265,9 +285,13 @@ class HouseholdController extends ChangeNotifier {
       household = room.household;
       _revision = room.revision;
       inviteCode = room.inviteCode;
+      notificationMemberId = await _localStore.loadNotificationMember(
+        room.household.id,
+      );
       syncState = SyncState.online;
       _notify();
       await _connectRemote(nextGeneration);
+      await _restoreNotifications();
       if (replaceGroupId != null) {
         await _localStore.deleteHousehold(replaceGroupId);
       }
@@ -344,6 +368,47 @@ class HouseholdController extends ChangeNotifier {
     } catch (connectionError) {
       if (_isCurrent(generation)) _markError(connectionError);
     }
+  }
+
+  Future<bool> enableNotifications(String memberId) async {
+    if (!isCloudRoom || busy) return false;
+    if (!household.activeMembers.any((member) => member.id == memberId)) {
+      return false;
+    }
+    try {
+      final enabled = await _notificationService.enable(roomCode, memberId);
+      if (!enabled) return false;
+      await _localStore.saveNotificationMember(roomCode, memberId);
+      notificationMemberId = memberId;
+      _notify();
+      return true;
+    } catch (notificationError) {
+      _markError(notificationError);
+      return false;
+    }
+  }
+
+  Future<bool> disableNotifications() async {
+    if (!isCloudRoom) return false;
+    try {
+      await _notificationService.disable(roomCode);
+      await _localStore.saveNotificationMember(roomCode, null);
+      notificationMemberId = null;
+      _notify();
+      return true;
+    } catch (notificationError) {
+      _markError(notificationError);
+      return false;
+    }
+  }
+
+  Future<void> _restoreNotifications() async {
+    final memberId = notificationMemberId;
+    if (memberId == null ||
+        !household.activeMembers.any((member) => member.id == memberId)) {
+      return;
+    }
+    await _notificationService.restore(roomCode, memberId);
   }
 
   Future<void> _connectRemote(int generation) async {
@@ -433,6 +498,7 @@ class HouseholdController extends ChangeNotifier {
     _disposed = true;
     _generation += 1;
     unawaited(_remoteSubscription?.cancel());
+    unawaited(_notificationService.dispose());
     super.dispose();
   }
 }

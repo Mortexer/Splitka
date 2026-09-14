@@ -81,6 +81,27 @@ service cloud.firestore {
             || get(/databases/$(database)/documents/invites/$(request.resource.data.inviteCode)).data.roomId == roomId
           );
       }
+
+      match /notificationDevices/{uid} {
+        allow get: if signedIn() && request.auth.uid == uid && member(roomId);
+        allow list: if false;
+        allow create, update: if signedIn()
+          && request.auth.uid == uid
+          && member(roomId)
+          && request.resource.data.keys().hasOnly([
+            'uid', 'token', 'memberId', 'platform', 'updatedAt'
+          ])
+          && request.resource.data.uid == uid
+          && request.resource.data.token is string
+          && request.resource.data.token.size() >= 20
+          && request.resource.data.token.size() <= 4096
+          && request.resource.data.memberId is string
+          && request.resource.data.memberId.size() >= 1
+          && request.resource.data.memberId.size() <= 80
+          && request.resource.data.platform in ['android', 'iOS']
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if signedIn() && request.auth.uid == uid && member(roomId);
+      }
     }
 
     // A valid invite permits joining, but never listing rooms.
