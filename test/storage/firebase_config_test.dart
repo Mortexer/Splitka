@@ -26,4 +26,13 @@ void main() {
       expect(SplitkaFirebaseConfig.optionsForPlatform(platform), isNull);
     }
   });
+
+  test('uses a dedicated web app in the same Firebase project', () {
+    expect(SplitkaFirebaseConfig.web.projectId, 'splitka-18560');
+    expect(SplitkaFirebaseConfig.web.appId, contains(':web:'));
+    expect(
+      SplitkaFirebaseConfig.web.authDomain,
+      'splitka-18560.firebaseapp.com',
+    );
+  });
 }

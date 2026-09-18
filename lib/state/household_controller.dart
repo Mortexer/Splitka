@@ -104,7 +104,7 @@ class HouseholdController extends ChangeNotifier {
     }
     try {
       final seed = renameGroup(createDefaultHousehold(), name);
-      return _changeRoom(() => _firebaseStore.createHousehold(seed));
+      return await _changeRoom(() => _firebaseStore.createHousehold(seed));
     } catch (createError) {
       _markError(createError);
       return false;

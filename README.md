@@ -77,6 +77,23 @@ Konfiguracja Firebase iOS jest dolaczona. Builda i dzialania iOS nie mozna
 zweryfikowac na Windowsie; trzeba wykonac je na Macu.
 Sposob dlugoterminowej dystrybucji iPhone'a pozostaje do ustalenia.
 
+## Web i instalacja na iPhonie
+
+Wersja webowa jest dostepna pod adresem:
+
+https://splitka-18560.web.app
+
+Na iPhonie otworz ten adres w Safari, wybierz Udostepnij, a potem
+`Do ekranu poczatkowego`. Aplikacja korzysta z tego samego projektu Firebase,
+wiec wspolne grupy i kody zaproszen dzialaja miedzy webem, Androidem i iOS.
+Powiadomienia push sa na razie dostepne tylko w aplikacjach mobilnych.
+
+Publikacja nowej wersji:
+
+```bash
+npm run web:deploy
+```
+
 ## Kontrole
 
 ```powershell

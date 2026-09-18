@@ -8,11 +8,12 @@ class SplitkaFirebaseConfig {
   static const enabled = !bool.fromEnvironment('SPLITKA_LOCAL_ONLY');
 
   static bool get isConfigured =>
-      enabled && !kIsWeb && optionsForPlatform(defaultTargetPlatform) != null;
+      enabled && (kIsWeb || optionsForPlatform(defaultTargetPlatform) != null);
 
   static FirebaseOptions get options {
+    if (kIsWeb) return web;
     return optionsForPlatform(defaultTargetPlatform) ??
-        (throw UnsupportedError('Splitka supports Android and iOS.'));
+        (throw UnsupportedError('Splitka supports Android, iOS and web.'));
   }
 
   static FirebaseOptions? optionsForPlatform(TargetPlatform platform) {
@@ -39,5 +40,15 @@ class SplitkaFirebaseConfig {
     projectId: projectId,
     storageBucket: 'splitka-18560.firebasestorage.app',
     iosBundleId: 'pl.splitka.splitkaFlutter',
+  );
+
+  static const web = FirebaseOptions(
+    apiKey: 'AIzaSyDD_rSG5KYqWI-5_ZKE947kWM3T0UrseC8',
+    appId: '1:468039135218:web:e50f1a6b47e4c061e8056b',
+    messagingSenderId: '468039135218',
+    projectId: projectId,
+    authDomain: 'splitka-18560.firebaseapp.com',
+    storageBucket: 'splitka-18560.firebasestorage.app',
+    measurementId: 'G-F7QKJSPMET',
   );
 }

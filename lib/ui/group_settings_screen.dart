@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/groups.dart';
@@ -76,7 +77,7 @@ class GroupSettingsScreen extends StatelessWidget {
                             builder: (_) => RoomDialog(controller: controller),
                           ),
                         ),
-                        if (controller.isCloudRoom) ...[
+                        if (controller.isCloudRoom && !kIsWeb) ...[
                           const SizedBox(height: 12),
                           _NotificationsCard(controller: controller),
                         ],
